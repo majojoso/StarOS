@@ -26,8 +26,11 @@
 //-------------------------------------------------------------------------------------------------------------------------//
 //Implementation
 
-void PageFaultHandler(RegisterSet *Registers, UInt64 ErrorCode)
+void PageFaultHandler(UInt64 Core, RegisterSet *Registers, UInt64 ErrorCode)
 {
+	//Dump Allocation Table
+	//DumpAllocationTableIntelligent();
+
 	//Error
 	PagingErrorCode Error;
 	Error.Value = ErrorCode;
@@ -40,12 +43,12 @@ void PageFaultHandler(RegisterSet *Registers, UInt64 ErrorCode)
 	Mapping.Value = ReadCR3();
 
 	//Physical Address
-	//UInt64 PhysicalAddress = VirtualToPhysical(Mapping, VirtualAddress);
+	UInt64 PhysicalAddress = VirtualToPhysical(Mapping, VirtualAddress);
 
 	//Debug
-	PrintFormatted("Page Fault: %H -> %H (%s%s%s%s%s%s%s%s)\r\n"
+	PanicFormatted("Page Fault: %H -> %H (%s%s%s%s%s%s%s%s)\r\n"
 		, VirtualAddress
-		, 0 //, PhysicalAddress
+		, PhysicalAddress
 		, Error.Present ? "P" : ""
 		, Error.Written ? "W" : ""
 		, Error.Usermode ? "U" : ""
@@ -118,7 +121,7 @@ void PageFaultHandler(RegisterSet *Registers, UInt64 ErrorCode)
 	else
 	{
 		//Debug
-		PrintFormatted("Kernel Pagefault\r\n");
+		PanicFormatted("Kernel Pagefault\r\n");
 
 		//Halt
 		while(true) asm("cli;hlt");

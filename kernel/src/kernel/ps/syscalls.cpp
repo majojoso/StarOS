@@ -39,19 +39,19 @@ UInt64 SyscallsIdCounter;
 
 UInt64 KernelApiNull()
 {
-	PrintFormatted("Api: 0: Null:\r\n");
+	LogFormatted("Api: 0: Null:\r\n");
 	return 10 + 0;
 }
 
 UInt64 KernelApiAvg(UInt64 P0, UInt64 P1, UInt64 P2, UInt64 P3)
 {
-	PrintFormatted("Api: 1: Avg: %d %d %d %d\r\n", P0, P1, P2, P3);
+	LogFormatted("Api: 1: Avg: %d %d %d %d\r\n", P0, P1, P2, P3);
 	return 10 + 1;
 }
 
 UInt64 KernelApiMax(UInt64 P0, UInt64 P1, UInt64 P2, UInt64 P3, UInt64 P4, UInt64 P5, UInt64 P6, UInt64 P7, UInt64 P8, UInt64 P9, UInt64 P10, UInt64 P11, UInt64 P12, UInt64 P13, UInt64 P14, UInt64 P15)
 {
-	PrintFormatted("Api: 2: Max: %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\r\n", P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15);
+	LogFormatted("Api: 2: Max: %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\r\n", P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15);
 	return 10 + 2;
 }
 
@@ -92,7 +92,7 @@ UInt64 AddSyscallHandler(UInt64 (*Routine)(UInt64, UInt64, UInt64, UInt64, UInt6
 	Syscalls->AddTail(NewSyscall);
 
 	//Debug
-	PrintFormatted("AddSyscallHandler: #%d: @0x%x\r\n", NewSyscall->Id, NewSyscall->Handler);
+	LogFormatted("AddSyscallHandler: #%d: @0x%x\r\n", NewSyscall->Id, NewSyscall->Handler);
 
 	//Result
 	return NewSyscall->Id;

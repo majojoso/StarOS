@@ -203,6 +203,14 @@ bool CpuidHasMsr()
 	return CpuidCheckFlagEdx(CPUID_FEAT_EDX_MSR);
 }
 
+UInt8 CpuidGetLapicId()
+{
+	UInt32 EAX, EBX, ECX, EDX;
+	CPUID(CPUID_GETFEATURES, &EAX, &EBX, &ECX, &EDX);
+
+	return EBX >> 24;
+}
+
 //-------------------------------------------------------------------------------------------------------------------------//
 //MSR
 
@@ -295,6 +303,23 @@ void CpuWriteCR8(UInt64 Value)
 }
 
 //-------------------------------------------------------------------------------------------------------------------------//
+//FX State
+
+void FxSave(void *Buffer)
+{
+	//asm volatile("fxsave %0" : : "m" (Buffer));
+	//asm volatile("fxsaveq (%0)" : : "a" (Buffer));
+	//asm volatile("fxsaveq (%0)" : : "r" (Buffer));
+}
+
+void FxLoad(void *Buffer)
+{
+	//asm volatile("fxrstor %0" : : "m" (Buffer));
+	//asm volatile("fxrstorq (%0)" : : "a" (Buffer));
+	//asm volatile("fxrstorq (%0)" : : "r" (Buffer));
+}
+
+//-------------------------------------------------------------------------------------------------------------------------//
 //Ticks
 
 UInt64 GetCpuTicks()
@@ -313,11 +338,11 @@ void InitializeCpuid()
 	char Vendor[13] = "";
 	CpuidGetVendor(Vendor);
 	Vendor[12] = '\0';
-	PrintFormatted("[CPID] Vendor: %s\r\n", Vendor);
+	LogFormatted("[CPID] Vendor: %s\r\n", Vendor);
 
 	//Model
 	UInt32 Model = CpuidGetModel();
-	PrintFormatted("[CPID] Model: %d\r\n", Model);
+	LogFormatted("[CPID] Model: %d\r\n", Model);
 }
 
 void InitializeCoreCpuid(UInt64 Core)

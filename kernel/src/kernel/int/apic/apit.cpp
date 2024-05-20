@@ -26,6 +26,8 @@
 //-------------------------------------------------------------------------------------------------------------------------//
 //Declarations
 
+UInt32 CountedTicks = 0;
+
 //-------------------------------------------------------------------------------------------------------------------------//
 //Implementation
 
@@ -47,7 +49,13 @@ void ConfigureApitTimer(UInt32 IntervalMs)
 	LapicWrite(LAPIC_REG_LVT_TIMER, APIC_LVT_INT_MASKED);
 
 	//APIT Ticks (in 10ms)
-	UInt32 CountedTicks = 0xFFFFFFFF - LapicRead(LAPIC_REG_CURRENT_COUNT_FOR_TIMER);
+	CountedTicks = 0xFFFFFFFF - LapicRead(LAPIC_REG_CURRENT_COUNT_FOR_TIMER);
+}
+
+void ConfigureApitTimerCore(UInt64 Core, UInt32 IntervalMs)
+{
+	//Only BSP
+	//if(Core > 0) return;
 
 	//Start Timer (IRQ0, Periodic, Divider 16, Counted Ticks)
 	LapicWrite(LAPIC_REG_LVT_TIMER, 32 | APIC_LVT_TIMER_MODE_PERIODIC);
@@ -61,6 +69,11 @@ void ConfigureApitTimer(UInt32 IntervalMs)
 void InitializeApit()
 {
 	ConfigureApitTimer(1);
+}
+
+void InitializeCoreApit(UInt64 Core)
+{
+	ConfigureApitTimerCore(Core, 1);
 }
 
 void DeinitializeApit()

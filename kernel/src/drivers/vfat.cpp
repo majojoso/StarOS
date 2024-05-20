@@ -51,14 +51,14 @@ UInt8 *VfatDriver::ReadClusterChain(UInt64 Cluster, UInt64 Size)
 	MemorySet(Data, 0, Count * ClusterSize);
 
 	//Debug
-	//PrintFormatted("[VFAT] Chain: Cluster %d Count %d: ", Cluster, Count);
+	//LogFormatted("[VFAT] Chain: Cluster %d Count %d: ", Cluster, Count);
 
 	//Loop Clusters
 	UInt32 Next = Cluster;
 	for(int i = 0; i < Count && Next < CtLast; i++)
 	{
 		//Debug
-		//PrintFormatted("<%d>", Next);
+		//LogFormatted("<%d>", Next);
 
 		//Read
 		bool SuccessRead = ReadDataClusters(Next, 1, Data + i * ClusterSize);
@@ -68,7 +68,7 @@ UInt8 *VfatDriver::ReadClusterChain(UInt64 Cluster, UInt64 Size)
 	}
 
 	//Debug
-	//PrintFormatted("\r\n");
+	//LogFormatted("\r\n");
 
 	//Result
 	return Data;
@@ -86,7 +86,7 @@ UInt8 *VfatDriver::ReadFile(UInt64 Cluster, UInt64 Size)
 	return Data;
 }
 
-void VfatDriver::ListDirectory(UInt64 Cluster, UInt64 Level, char *Name, void **Buffer, UInt64 *Size, bool Log)
+void VfatDriver::ListDirectory(UInt64 Cluster, UInt64 Level, char *Name, void **Buffer, UInt64 *Size, bool LogIt)
 {
 	//Identation
 	char Identation[16];
@@ -104,7 +104,7 @@ void VfatDriver::ListDirectory(UInt64 Cluster, UInt64 Level, char *Name, void **
 	FatDirectoryGeneral *Directory = (FatDirectoryGeneral *) DirectoryBuffer;
 
 	//Debug
-	//if(Log) PrintFormatted("[VFAT] Dir <%s> <%s> <%s>\r\n", Directory[0].Extended.Characters0, Directory[0].Extended.Characters1, Directory[0].Extended.Characters2);
+	//if(LogIt) LogFormatted("[VFAT] Dir <%s> <%s> <%s>\r\n", Directory[0].Extended.Characters0, Directory[0].Extended.Characters1, Directory[0].Extended.Characters2);
 
 	//Long Filename Buffer
 	char LfnBuffer[256] = "";
@@ -166,14 +166,14 @@ void VfatDriver::ListDirectory(UInt64 Cluster, UInt64 Level, char *Name, void **
 			StringTrimEnd(LfnBuffer, sizeof LfnBuffer, ' ');
 
 			//Debug
-			if(Log) PrintFormatted("[VFAT] %s %s/ (@%d +%d) [%s]\r\n", Identation, Filename, FileCluster, FileSize, LfnBuffer);
+			if(LogIt) LogFormatted("[VFAT] %s %s/ (@%d +%d) [%s]\r\n", Identation, Filename, FileCluster, FileSize, LfnBuffer);
 
 			//Reset LFN
 			LfnBuffer[0] = '\0';
 			MemorySet(LfnBuffer, 0, sizeof LfnBuffer);
 
 			//Read
-			ListDirectory(FileCluster, Level + 1, Name, Buffer, Size, Log);
+			ListDirectory(FileCluster, Level + 1, Name, Buffer, Size, LogIt);
 		}
 		//File
 		else
@@ -194,7 +194,7 @@ void VfatDriver::ListDirectory(UInt64 Cluster, UInt64 Level, char *Name, void **
 			StringTrimEnd(LfnBuffer, sizeof LfnBuffer, ' ');
 
 			//Debug
-			if(Log) PrintFormatted("[VFAT] %s %s (@%d +%d) [%s]\r\n", Identation, Filename, FileCluster, FileSize, LfnBuffer);
+			if(LogIt) LogFormatted("[VFAT] %s %s (@%d +%d) [%s]\r\n", Identation, Filename, FileCluster, FileSize, LfnBuffer);
 
 			//Filled
 			if(FileCluster != 0 && FileSize != 0)
@@ -212,7 +212,7 @@ void VfatDriver::ListDirectory(UInt64 Cluster, UInt64 Level, char *Name, void **
 						*Size = FileSize;
 
 						//Dump
-						//PrintFormatted("Found <%s> <%s> <%s> +%d:\r\n", Filename, LfnBuffer, Name, FileSize);
+						//LogFormatted("Found <%s> <%s> <%s> +%d:\r\n", Filename, LfnBuffer, Name, FileSize);
 						//DumpFile(Data, FileSize);
 						//DumpFile((UInt8 *) *Buffer, *Size);
 					}
@@ -249,7 +249,7 @@ VfatDriver::VfatDriver(UInt64 Partition)
 	if(!SuccessFsInf) return;
 
 	//Debug
-	PrintFormatted("[VFAT] Found FS Info: FirstSearchCluster %d FreeClusterCount %d\r\n", FsInfo->FirstSearchCluster, FsInfo->FreeClusterCount);
+	LogFormatted("[VFAT] Found FS Info: FirstSearchCluster %d FreeClusterCount %d\r\n", FsInfo->FirstSearchCluster, FsInfo->FreeClusterCount);
 
 	//Variables
 	VolumeSectorCount = (BootRecord->BiosParameterBlock.VolumeSectorCount == 0) ? BootRecord->BiosParameterBlock.LargeSectorCount : BootRecord->BiosParameterBlock.VolumeSectorCount;
@@ -263,8 +263,8 @@ VfatDriver::VfatDriver(UInt64 Partition)
 	DataLength = VolumeSectorCount - DataStart;
 
 	//Debug
-	PrintFormatted("[VFAT] FAT Start %d Length %d Count %d\r\n", FatStart, FatLength, FatCount);
-	PrintFormatted("[VFAT] DAT Start %d Length %d\r\n", DataStart, DataLength);
+	LogFormatted("[VFAT] FAT Start %d Length %d Count %d\r\n", FatStart, FatLength, FatCount);
+	LogFormatted("[VFAT] DAT Start %d Length %d\r\n", DataStart, DataLength);
 
 	//FAT
 	Fat = (UInt32 *) ReserveMemory(FatLength * SECTOR_SIZE);
@@ -276,7 +276,7 @@ VfatDriver::VfatDriver(UInt64 Partition)
 
 	//List Tree
 	RootCluster = BootRecord->ExtendedBootRecord.RootClusterNumber;
-	PrintFormatted("[VFAT] /\r\n");
+	LogFormatted("[VFAT] /\r\n");
 	ListDirectory(RootCluster, 0, "", nullptr, nullptr, true);
 }
 
@@ -321,7 +321,7 @@ void InitializeVfat()
 	if(Buffer != nullptr)
 	{
 		//Dump
-		PrintFormatted("testfile.txt:\r\n");
+		LogFormatted("testfile.txt:\r\n");
 		DumpFile((UInt8 *) Buffer, Size);
 	}
 	*/

@@ -15,10 +15,18 @@
 
 #include<kernel/int/api/timer.h>
 
+#include<kernel/smp/spinlock.h>
+
+#include<kernel/ps/syscalls.h>
+#include<kernel/api/apis.h>
+
+#include<kernel/ps/tasks.h>
+
 #include<drivers/hid.h>
 
-//#include<ui/framebuffer.h>
 #include<ui/draw.h>
+#include<ui/font.h>
+#include<ui/framebuffer.h>
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Information
@@ -91,6 +99,9 @@ struct Window
 
 struct CompositorState
 {
+	bool Run;
+	bool Running;
+
 	List<Window *> *Windows;
 
 	UInt64 HandleCounter;
@@ -144,6 +155,8 @@ UInt32 MousePointerBitmap[] =
 };
 
 CompositorState State;
+
+UInt64 CompositorLock = 0;
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Implementation
@@ -201,7 +214,7 @@ void DrawWindowBuffer(Window *Window)
 	UInt32 *WindowBuffer = Window->Bitmap;
 	DrawSurface WindowSurface
 	{
-		.Framebuffer = WindowBuffer,
+		.Buffer = WindowBuffer,
 		.BitsPerPixel = 32,
 		.Height = WindowHeight,
 		.Width = WindowWidth
@@ -234,15 +247,14 @@ void DrawWindowBuffer(Window *Window)
 		char Caption[256] = "";
 		StringCopy(Window->Caption, sizeof Caption, Caption, sizeof Caption);
 		StringConcat((char *) "\r\n", sizeof Caption, Caption, sizeof Caption);
-		Print(&WindowSurface, &Console, " ", 0x00FFFFFF);
-		Print(&WindowSurface, &Console, Caption, 0x00FFFFFF);
+		PrintToFormatted(&WindowSurface, nullptr, &Console, 0x00000000, 0x00FFFFFF, " %s", Caption);
 
 		//Window Text
-		Print(&WindowSurface, &Console, "\r\n", 0x00000000);
-		Print(&WindowSurface, &Console, " 1 Lorem ipsum dolor sit amet.\r\n", 0x00000000);
-		Print(&WindowSurface, &Console, " 2 Lorem ipsum dolor sit amet.\r\n", 0x00000000);
-		Print(&WindowSurface, &Console, " 3 Lorem ipsum dolor sit amet.\r\n", 0x00000000);
-		Print(&WindowSurface, &Console, " 4 Lorem ipsum dolor sit amet.\r\n", 0x00000000);
+		PrintTo(&WindowSurface, nullptr, &Console, 0x00000000, 0x00000000, "\r\n");
+		PrintTo(&WindowSurface, nullptr, &Console, 0x00000000, 0x00000000, " 1 Lorem ipsum dolor sit amet.\r\n");
+		PrintTo(&WindowSurface, nullptr, &Console, 0x00000000, 0x00000000, " 2 Lorem ipsum dolor sit amet.\r\n");
+		PrintTo(&WindowSurface, nullptr, &Console, 0x00000000, 0x00000000, " 3 Lorem ipsum dolor sit amet.\r\n");
+		PrintTo(&WindowSurface, nullptr, &Console, 0x00000000, 0x00000000, " 4 Lorem ipsum dolor sit amet.\r\n");
 	}
 }
 
@@ -256,7 +268,7 @@ void DrawWindowScreen(Window *Window)
 	UInt32 *WindowBuffer = Window->Bitmap;
 	DrawSurface WindowSurface
 	{
-		.Framebuffer = WindowBuffer,
+		.Buffer = WindowBuffer,
 		.BitsPerPixel = 32,
 		.Height = WindowHeight,
 		.Width = WindowWidth
@@ -285,14 +297,14 @@ void DrawMouse(bool Incremental)
 	//Surfaces
 	DrawSurface SurfaceMouseBackup =
 	{
-		.Framebuffer = (UInt32 *) &State.MouseBackup,
+		.Buffer = (UInt32 *) &State.MouseBackup,
 		.BitsPerPixel = 32,
 		.Height = 20,
 		.Width = 12
 	};
 	DrawSurface SurfaceMousePointer =
 	{
-		.Framebuffer = MousePointerBitmap,
+		.Buffer = MousePointerBitmap,
 		.BitsPerPixel = 32,
 		.Height = 20,
 		.Width = 12
@@ -381,8 +393,20 @@ void TimerHadler()
 //-------------------------------------------------------------------------------------------------------------------------//
 //Keyboard Handler
 
+void CompositorHandler(UInt64 Core, RegisterSet *Registers);
+
 void KeyboardHandler(Keystroke Stroke)
 {
+	//Handle ALT+F4
+	if(Stroke.ControlKeys.Alt && StringCompare(Stroke.Key, "F4"))
+	{
+		//Stop Timer
+		//TimerStop(CompositorHandler);
+
+		//Stop Run
+		State.Run = false;
+	}
+
 	//Report Keyboard Event to Application
 	if(!State.PreviousMoving && !State.WindowMoving)
 	{
@@ -546,8 +570,8 @@ void MouseHandler(MousePacket Packet)
 			//Hid Package
 			HidPackage Package;
 			Package.Type = HID_MOUSE;
-			Package.Mouse.MovementX = State.MouseCurrentX;
-			Package.Mouse.MovementY = State.MouseCurrentY;
+			Package.Mouse.MovementX = State.MouseCurrentX - Found->PositionX;
+			Package.Mouse.MovementY = State.MouseCurrentY - Found->PositionY;
 			Package.Mouse.ButtonL = Packet.ButtonL;
 			Package.Mouse.ButtonM = Packet.ButtonM;
 			Package.Mouse.ButtonR = Packet.ButtonR;
@@ -564,10 +588,13 @@ void MouseHandler(MousePacket Packet)
 //-------------------------------------------------------------------------------------------------------------------------//
 //Compositor Handler
 
-void CompositorHandler(RegisterSet *Registers)
+void CompositorHandler(UInt64 Core, RegisterSet *Registers)
 {
-	//Log
-	//PrintFormatted("Compositor Tick\r\n");
+	//Lock
+	SpinLockRaw(&CompositorLock);
+
+	//LogFormatted
+	//LogFormatted("Compositor Tick\r\n");
 
 	//Loop HID Events
 	while(HidHasEvents())
@@ -598,10 +625,37 @@ void CompositorHandler(RegisterSet *Registers)
 
 	//Handle Timer
 	TimerHadler();
+
+	//Unlock
+	SpinUnlockRaw(&CompositorLock);
+}
+
+void CompositorRoutine()
+{
+	//While Run
+	while(State.Run)
+	{
+		//Handler
+		CompositorHandler(0, nullptr);
+
+		//Sleep
+		ApiSleep(30);
+	}
+
+	//Stop Running
+	State.Running = false;
+
+	//Exit
+	ApiExitProcess();
 }
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //API
+
+bool CompositorIsRunning()
+{
+	return State.Running;
+}
 
 UInt64 CompositorCreateWindow(char *Name, char *Caption, UInt64 PositionY, UInt64 PositionX, UInt64 Height, UInt64 Width, UInt8 Opacity, WindowState WindowState, bool Resizeable, bool TopMost, void (*HidHandler)(HidPackage Package))
 {
@@ -679,14 +733,14 @@ void CompositorUpdateWindowBitmap(UInt64 Handle, UInt32 *Bitmap)
 			//Prepare
 			DrawSurface SurfaceFrom
 			{
-				.Framebuffer = Bitmap,
+				.Buffer = Bitmap,
 				.BitsPerPixel = 32,
 				.Height = Current->ContentHeight,
 				.Width = Current->ContentWidth
 			};
 			DrawSurface SurfaceTo
 			{
-				.Framebuffer = Current->Bitmap,
+				.Buffer = Current->Bitmap,
 				.BitsPerPixel = 32,
 				.Height = Current->Height,
 				.Width = Current->Width
@@ -777,10 +831,33 @@ void InitializeCompositor()
 	DrawFrame();
 
 	//Timer
-	TimerStart(CompositorHandler, 30); //10
+	//TimerStart(CompositorHandler, 30); //10
+	//ApiTimerStart(CompositorHandler, 30); //10
+
+	//Start Run + Running
+	State.Run = true;
+	State.Running = true;
+
+	//Launch Task
+	CreateTask("compositor", CompositorRoutine, false, false, 0);
 }
 
 void DeinitializeCompositor()
 {
-	//
+	//Wait Running
+	while(State.Running) asm volatile("pause" : : : "memory");
+
+	//Loop Windows
+	for(auto CurrentIterator = (*State.Windows).begin(), EndIterator = (*State.Windows).end(); CurrentIterator != EndIterator; ++CurrentIterator)
+	{
+		//Data
+		const auto Current = *CurrentIterator;
+
+		//Chain out
+		(*State.Windows).RemoveElement(CurrentIterator);
+
+		//Delete
+		FreeMemory(Current->Bitmap);
+		FreeMemory(Current);
+	}
 }

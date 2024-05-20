@@ -22,6 +22,7 @@
 //Prototypes
 
 void SendTestIpi();
+void SendHaltIpi();
 
 void InitializeIpi();
 void DeinitializeIpi();

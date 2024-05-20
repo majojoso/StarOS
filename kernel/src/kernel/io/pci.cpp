@@ -253,14 +253,14 @@ void PciDetect(PciHeaderCommon *FunctionHeader)
 void EnumeratePci(McfgHeader *Mcfg)
 {
 	//Debug
-	PrintFormatted("[PCI ] Scanning PCI:\r\n");
+	LogFormatted("[PCI ] Scanning PCI:\r\n");
 
 	//Loop PCIs
 	int Entries = ((Mcfg->Header.Length) - sizeof(McfgHeader)) / sizeof(DeviceConfig);
 	for(int i = 0; i < Entries; i++)
 	{
 		//Debug
-		PrintFormatted("[PCI ]   Pci %d\r\n", i);
+		LogFormatted("[PCI ]   Pci %d\r\n", i);
 
 		//Loop Buses
 		DeviceConfig *Config = (DeviceConfig *) ((UInt64) Mcfg + sizeof(McfgHeader) + (sizeof(DeviceConfig) * i));
@@ -277,7 +277,7 @@ void EnumeratePci(McfgHeader *Mcfg)
 			if(BusHeader->DeviceId == 0 || BusHeader->DeviceId == 0xFFFF) continue;
 
 			//Debug
-			PrintFormatted("[PCI ]     Bus %d\r\n", j);
+			LogFormatted("[PCI ]     Bus %d\r\n", j);
 
 			//Loop Devices
 			for(UInt64 k = 0; k < 32; k++)
@@ -293,7 +293,7 @@ void EnumeratePci(McfgHeader *Mcfg)
 				if(DeviceHeader->DeviceId == 0 || DeviceHeader->DeviceId == 0xFFFF) continue;
 
 				//Debug
-				PrintFormatted("[PCI ]       Dev %d\r\n", k);
+				LogFormatted("[PCI ]       Dev %d\r\n", k);
 
 				//Loop Functions
 				for(UInt64 l = 0; l < 8; l++)
@@ -309,7 +309,7 @@ void EnumeratePci(McfgHeader *Mcfg)
 					if(FunctionHeader->DeviceId == 0 || FunctionHeader->DeviceId == 0xFFFF) continue;
 
 					//Debug
-					PrintFormatted("[PCI ]         Fun %d: %s - %s (%s -> %s -> %s)\r\n"
+					LogFormatted("[PCI ]         Fun %d: %s - %s (%s -> %s -> %s)\r\n"
 						, l
 						, GetVendorName(FunctionHeader->VendorId)
 						, GetDeviceName(FunctionHeader->VendorId, FunctionHeader->DeviceId)

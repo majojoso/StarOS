@@ -12,6 +12,8 @@
 
 #include<kernel/io/ports.h>
 
+#include<kernel/smp/spinlock.h>
+
 //-------------------------------------------------------------------------------------------------------------------------//
 //Information
 
@@ -132,6 +134,8 @@ IO Port Offset 	Setting of DLAB 	Register mapped to this port
 //Declarations
 
 Int32 Devices[COMS] = { COM_BANK_COM1, COM_BANK_COM2, COM_BANK_COM3, COM_BANK_COM4 };
+
+UInt64 SerialLock = 0;
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Implementation
@@ -263,6 +267,9 @@ Int32 SerialReadBufferAbort(Int32 Port, char *Buffer, Int32 Length, bool Echo, c
 
 void PrintSerial(const char *Text)
 {
+	//Lock
+	//SpinLockRaw(&SerialLock);
+
 	//Loop Characters
 	char *Character = (char *) Text;
 	while(*Character != '\0')
@@ -274,6 +281,9 @@ void PrintSerial(const char *Text)
 		//Next Character
 		Character++;
 	}
+
+	//Unlock
+	//SpinUnlockRaw(&SerialLock);
 }
 
 //-------------------------------------------------------------------------------------------------------------------------//

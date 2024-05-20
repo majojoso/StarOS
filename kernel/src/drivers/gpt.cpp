@@ -27,7 +27,7 @@
 void GptDriver::PrintGptGuid(UInt8 *Guid)
 {
 	//Print
-	PrintFormatted("%x%x%x%x-%x%x-%x%x-%x%x-%x%x%x%x%x%x"
+	LogFormatted("%x%x%x%x-%x%x-%x%x-%x%x-%x%x%x%x%x%x"
 		, Guid[3], Guid[2], Guid[1], Guid[0]
 		, Guid[5], Guid[4]
 		, Guid[7], Guid[6]
@@ -73,12 +73,12 @@ GptDriver::GptDriver(UInt64 Controller, UInt64 Port)
 	if(Header->PartitionsCount == 0) return;
 
 	//Debug Header
-	PrintFormatted("[GPT ] AHCI Controller %d Port %d: GPT LBA %d: Count %d Size %d\r\n", Controller, Port, Sector, Count, Size);
+	LogFormatted("[GPT ] AHCI Controller %d Port %d: GPT LBA %d: Count %d Size %d\r\n", Controller, Port, Sector, Count, Size);
 
 	//Debug GUID
-	PrintFormatted("[GPT ]   GUID: ");
+	LogFormatted("[GPT ]   GUID: ");
 	PrintGptGuid(Header->DiskGuid);
-	PrintFormatted("\r\n");
+	LogFormatted("\r\n");
 
 	//Table
 	Table = (GptEntry *) ReserveMemory(Count * Size);
@@ -102,7 +102,7 @@ GptDriver::GptDriver(UInt64 Controller, UInt64 Port)
 		UInt64 SizeMB = DivideCeiling(Size, 1048576);
 
 		//Debug
-		PrintFormatted("[GPT ]   GPT Partition %d: %d MB\r\n", i, SizeMB);
+		LogFormatted("[GPT ]   GPT Partition %d: %d MB\r\n", i, SizeMB);
 
 		//Add
 		//if(Size > 0) AddPartition();

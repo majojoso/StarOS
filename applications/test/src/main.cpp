@@ -31,13 +31,13 @@ void TestSyscalls()
 	UInt64 Result0 = ApiNull();
 	UInt64 Result1 = ApiAvg(0, 1, 2, 3);
 	UInt64 Result2 = ApiMax(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
-	//PrintFormatted("Called: %d %d %d\r\n", Result0, Result1, Result2);
+	//LogFormatted("Called: %d %d %d\r\n", Result0, Result1, Result2);
 }
 
 void TestThread()
 {
 	//Identify
-	UInt64 Thread = ApiGetProcessId();
+	UInt64 Thread = ApiGetProcessId() - 2;
 
 	//Draw Loop
 	bool Growth = 0;
@@ -51,18 +51,22 @@ void TestThread()
 		//{
 		//	for(int x = 0; x < 25; x++)
 		//	{
-		//		FramebufferUefi.FrontBuffer.Framebuffer[((y) * FramebufferUefi.FrontBuffer.Width + (x + Offset))] = Color;
+		//		FramebufferUefi.FrontBuffer.Buffer[((y) * FramebufferUefi.FrontBuffer.Width + (x + Offset))] = Color;
 		//	}
 		//}
 
 		//Draw Syscall
 		UInt64 Result = ApiProcessDebugBlink(Thread, Counter);
 
+		//Print
+		//ApiUserPrint("TestUser");
+
 		//Test Syscalls
 		//if(Counter == 128 || Counter == 255) TestSyscalls();
 
 		//Sleep
-		for(int i = 0; i < 500000; i++) asm("nop");
+		//for(int i = 0; i < 500000; i++) asm("nop");
+		ApiSleep(50);
 
 		//Try Access Kernel Memory
 		//char *KernelMemory = (char *) (700 * 1024 * 1024);
@@ -72,8 +76,11 @@ void TestThread()
 		//asm("sti");
 
 		//Alternate
-		Counter += Growth ? 1 : -1;
-		if(Counter == 128 || Counter == 255) Growth = !Growth;
+		Counter += Growth ? 5 : -5;
+		if(Counter == 125 || Counter == 255) Growth = !Growth;
+
+		//Sleep
+		//if(Thread == 2) if(Counter == 128 || Counter == 255) ApiSleep(50); //50 1000
 	}
 }
 

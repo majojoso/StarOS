@@ -13,6 +13,8 @@
 
 #include<include/globals.h>
 
+#include<ui/draw.h>
+
 //-------------------------------------------------------------------------------------------------------------------------//
 //Information
 
@@ -22,9 +24,11 @@
 //-------------------------------------------------------------------------------------------------------------------------//
 //Prototypes
 
-int PrintFormattedInternal(UInt64 Channel, const char *Format, ...);
+int LogFormatted(const char *Format, ...);
 
-#define PrintFormatted(Format, ...) PrintFormattedInternal(2, Format __VA_OPT__(,) __VA_ARGS__)
+int PrintToFormatted(DrawSurface *Surface, DrawSelection *Selection, ConsoleState *Console, UInt32 ColorBackground, UInt32 ColorForeground, const char *Format, ...);
+
+int PanicFormatted(const char *Format, ...);
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Declarations

@@ -23,4 +23,5 @@
 //Declarations
 
 void InitializeApit();
+void InitializeCoreApit(UInt64 Core);
 void DeinitializeApit();

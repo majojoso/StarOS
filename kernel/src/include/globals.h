@@ -11,9 +11,9 @@
 //-------------------------------------------------------------------------------------------------------------------------//
 //Version
 
-#define VERSION_MAJOR 1
-#define VERSION_MINOR 0
-#define VERSION_REVISION 0
+#define VERSION_MAJOR 0
+#define VERSION_MINOR 1
+#define VERSION_REVISION 1
 #define VERSION_BUILD 0
 
 //-------------------------------------------------------------------------------------------------------------------------//
@@ -24,16 +24,19 @@
 //-------------------------------------------------------------------------------------------------------------------------//
 //Config
 
-//#define DEBUG_INIT 1
 #define USE_APIC 1
+#define USE_SMP  1
+#define USE_LOGO 1
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Assert
 
 #ifndef DEBUG
 	#define ASSERT(x)
+	#define ASSERT_HLT(x)
 #else
-	#define ASSERT(x) if(!(x)) PrintFormatted("Assertion failed: %s:%s:%s\r\n", __FILE__, __LINE__, #x);
+	#define ASSERT(x) if(!(x)) LogFormatted("Assertion failed: %s:%s:%s\r\n", __FILE__, __LINE__, #x);
+	#define ASSERT_HLT(x) if(!(x)) { LogFormatted("Assertion failed: %s:%s:%s => Halting\r\n", __FILE__, __LINE__, #x); while(true) asm("cli;hlt"); }
 #endif
 
 //-------------------------------------------------------------------------------------------------------------------------//

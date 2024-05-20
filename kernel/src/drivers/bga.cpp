@@ -12,8 +12,7 @@
 
 #include<kernel/io/ports.h>
 
-//#include<ui/framebuffer.h>
-#include<ui/draw.h>
+#include<ui/framebuffer.h>
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Information
@@ -137,22 +136,22 @@ void BgaSetBank(unsigned short BankNumber)
 void InitializeBga()
 {
 	//Save Screen Parameters Frontbuffer
-	FramebufferBga.FrontBuffer.Framebuffer = FramebufferLinear;
+	FramebufferBga.FrontBuffer.Buffer = FramebufferLinear;
 	FramebufferBga.FrontBuffer.BitsPerPixel = 32;
 	FramebufferBga.FrontBuffer.Height = 1024;
 	FramebufferBga.FrontBuffer.Width = 1280;
 
 	//Save Screen Parameters Backbuffer
-	FramebufferBga.BackBuffer.Framebuffer = (UInt32 *) ReserveMemory(1024 * 1280 * 4);
+	FramebufferBga.BackBuffer.Buffer = (UInt32 *) ReserveMemory(1024 * 1280 * 4);
 	FramebufferBga.BackBuffer.BitsPerPixel = 32;
 	FramebufferBga.BackBuffer.Height = 1024;
 	FramebufferBga.BackBuffer.Width = 1280;
 
 	//Save Console Parameters
-	FramebufferBga.Console.ConsoleFontHeight = 16;
-	FramebufferBga.Console.ConsoleFontWidth = 8;
-	FramebufferBga.Console.ConsoleHeight = FramebufferBga.FrontBuffer.Height / FramebufferBga.Console.ConsoleFontHeight;
-	FramebufferBga.Console.ConsoleWidth = FramebufferBga.FrontBuffer.Width / FramebufferBga.Console.ConsoleFontWidth;
+	FramebufferBga.Console.FontHeight = 16;
+	FramebufferBga.Console.FontWidth = 8;
+	FramebufferBga.Console.Height = FramebufferBga.FrontBuffer.Height / FramebufferBga.Console.FontHeight;
+	FramebufferBga.Console.Width = FramebufferBga.FrontBuffer.Width / FramebufferBga.Console.FontWidth;
 
 	//FramebufferLinear
 	BgaSetVideoMode(1024, 1280, VBE_DISPI_BPP_32, true, true);

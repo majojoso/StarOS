@@ -39,7 +39,7 @@ void ClearSurface(DrawSurface *Surface, UInt32 Color)
 		for(int x = 0; x < Surface->Width; x++)
 		{
 			//Clear Pixel
-			Surface->Framebuffer[y * Surface->Width + x] = Color;
+			Surface->Buffer[y * Surface->Width + x] = Color;
 		}
 	}
 }
@@ -82,6 +82,26 @@ inline UInt32 AlphaBlendPixel(UInt32 A, UInt32 B)
 
 void CopyBitmap(DrawSurface *SurfaceFrom, DrawSurface *SurfaceTo, DrawSelection *SelectionFrom, DrawSelection *SelectionTo)
 {
+	//Default Selection From
+	DrawSelection DefaultSelectionFrom =
+	{
+		.Y = 0,
+		.X = 0,
+		.H = SurfaceFrom->Height,
+		.W = SurfaceFrom->Width
+	};
+	if(SelectionFrom == nullptr) SelectionFrom = &DefaultSelectionFrom;
+
+	//Default Selection To
+	DrawSelection DefaultSelectionTo =
+	{
+		.Y = 0,
+		.X = 0,
+		.H = SurfaceTo->Height,
+		.W = SurfaceTo->Width
+	};
+	if(SelectionTo == nullptr) SelectionTo = &DefaultSelectionTo;
+
 	//Loop Height
 	for(int i = 0; i < SelectionTo->H; i++)
 	{
@@ -117,13 +137,33 @@ void CopyBitmap(DrawSurface *SurfaceFrom, DrawSurface *SurfaceTo, DrawSelection 
 			int IndexFrom = (SelectionFrom->Y + i) * SurfaceFrom->Width + (SelectionFrom->X + j);
 
 			//Copy Pixel
-			SurfaceTo->Framebuffer[IndexTo] = SurfaceFrom->Framebuffer[IndexFrom];
+			SurfaceTo->Buffer[IndexTo] = SurfaceFrom->Buffer[IndexFrom];
 		}
 	}
 }
 
 void CopyBitmapAlpha(DrawSurface *SurfaceFrom, DrawSurface *SurfaceTo, DrawSelection *SelectionFrom, DrawSelection *SelectionTo)
 {
+	//Default Selection From
+	DrawSelection DefaultSelectionFrom =
+	{
+		.Y = 0,
+		.X = 0,
+		.H = SurfaceFrom->Height,
+		.W = SurfaceFrom->Width
+	};
+	if(SelectionFrom == nullptr) SelectionFrom = &DefaultSelectionFrom;
+
+	//Default Selection To
+	DrawSelection DefaultSelectionTo =
+	{
+		.Y = 0,
+		.X = 0,
+		.H = SurfaceTo->Height,
+		.W = SurfaceTo->Width
+	};
+	if(SelectionTo == nullptr) SelectionTo = &DefaultSelectionTo;
+
 	//Loop Height
 	for(int i = 0; i < SelectionTo->H; i++)
 	{
@@ -159,7 +199,7 @@ void CopyBitmapAlpha(DrawSurface *SurfaceFrom, DrawSurface *SurfaceTo, DrawSelec
 			int IndexFrom = (SelectionFrom->Y + i) * SurfaceFrom->Width + (SelectionFrom->X + j);
 
 			//Copy Pixel
-			SurfaceTo->Framebuffer[IndexTo] = AlphaBlendPixel(SurfaceFrom->Framebuffer[IndexFrom], SurfaceTo->Framebuffer[IndexTo]);
+			SurfaceTo->Buffer[IndexTo] = AlphaBlendPixel(SurfaceFrom->Buffer[IndexFrom], SurfaceTo->Buffer[IndexTo]);
 		}
 	}
 }
@@ -172,6 +212,26 @@ UInt32 ConvertRgbaToArgb(UInt32 RGBA)
 
 void CopyBitmapAlphaFromRGBA(DrawSurface *SurfaceFrom, DrawSurface *SurfaceTo, DrawSelection *SelectionFrom, DrawSelection *SelectionTo)
 {
+	//Default Selection From
+	DrawSelection DefaultSelectionFrom =
+	{
+		.Y = 0,
+		.X = 0,
+		.H = SurfaceFrom->Height,
+		.W = SurfaceFrom->Width
+	};
+	if(SelectionFrom == nullptr) SelectionFrom = &DefaultSelectionFrom;
+
+	//Default Selection To
+	DrawSelection DefaultSelectionTo =
+	{
+		.Y = 0,
+		.X = 0,
+		.H = SurfaceTo->Height,
+		.W = SurfaceTo->Width
+	};
+	if(SelectionTo == nullptr) SelectionTo = &DefaultSelectionTo;
+
 	//Loop Height
 	for(int i = 0; i < SelectionTo->H; i++)
 	{
@@ -207,7 +267,7 @@ void CopyBitmapAlphaFromRGBA(DrawSurface *SurfaceFrom, DrawSurface *SurfaceTo, D
 			int IndexFrom = (SelectionFrom->Y + i) * SurfaceFrom->Width + (SelectionFrom->X + j);
 
 			//Copy Pixel
-			SurfaceTo->Framebuffer[IndexTo] = ConvertRgbaToArgb(AlphaBlendPixel(SurfaceFrom->Framebuffer[IndexFrom], SurfaceTo->Framebuffer[IndexTo]));
+			SurfaceTo->Buffer[IndexTo] = ConvertRgbaToArgb(AlphaBlendPixel(SurfaceFrom->Buffer[IndexFrom], SurfaceTo->Buffer[IndexTo]));
 		}
 	}
 }
@@ -215,8 +275,20 @@ void CopyBitmapAlphaFromRGBA(DrawSurface *SurfaceFrom, DrawSurface *SurfaceTo, D
 //-------------------------------------------------------------------------------------------------------------------------//
 //Shapes
 
-void DrawLine(DrawSurface *Surface, UInt32 Y1, UInt32 X1, UInt32 Y2, UInt32 X2, UInt32 Color)
+#define SLOW for(int l = 0; l < 2000000; l++) asm("nop");
+
+void DrawLine(DrawSurface *Surface, DrawSelection *Selection, UInt32 Y1, UInt32 X1, UInt32 Y2, UInt32 X2, UInt32 Color)
 {
+	//Default Selection
+	DrawSelection DefaultSelection =
+	{
+		.Y = 0,
+		.X = 0,
+		.H = Surface->Height,
+		.W = Surface->Width
+	};
+	if(Selection == nullptr) Selection = &DefaultSelection;
+
 	//Guard
 	//if(!(0 <= X1 <= VideoScreenWidth )) return;
 	//if(!(0 <= X2 <= VideoScreenWidth )) return;
@@ -249,25 +321,25 @@ void DrawLine(DrawSurface *Surface, UInt32 Y1, UInt32 X1, UInt32 Y2, UInt32 X2, 
 	if((pdx == 0) && (pdy == 0))
 	{
 		//Set
-		Surface->Framebuffer[Y1 * Surface->Width + X1] = Color;
+		Surface->Buffer[Y1 * Surface->Width + X1] = Color;
 	}
 	//Vertical Y
 	else if((pdx == 0) && (pdy != 0))
 	{
 		//Loop + Set
-		for(UInt32 i = 0; i < dy + 1; i++) Surface->Framebuffer[(Y1 + SignY * i) * Surface->Width + X1] = Color;
+		for(UInt32 i = 0; i < dy + 1; i++) Surface->Buffer[(Y1 + SignY * i) * Surface->Width + X1] = Color;
 	}
 	//Horizontal X
 	else if((pdx != 0) && (pdy == 0))
 	{
 		//Loop + Set
-		for(UInt32 i = 0; i < dx + 1; i++) Surface->Framebuffer[(Y1) * Surface->Width + (X1 + SignX * i)] = Color;
+		for(UInt32 i = 0; i < dx + 1; i++) Surface->Buffer[(Y1) * Surface->Width + (X1 + SignX * i)] = Color;
 	}
 	//Diagonal X = Y
 	else if(pdx == pdy)
 	{
 		//Loop + Set
-		for(UInt32 i = 0; i < pdx + 1; i++) Surface->Framebuffer[(Y1 + SignY * i) * Surface->Width + (X1 + SignX * i)] = Color;
+		for(UInt32 i = 0; i < pdx + 1; i++) Surface->Buffer[(Y1 + SignY * i) * Surface->Width + (X1 + SignX * i)] = Color;
 	}
 	//Y > X
 	else if(pdy > pdx)
@@ -284,7 +356,7 @@ void DrawLine(DrawSurface *Surface, UInt32 Y1, UInt32 X1, UInt32 Y2, UInt32 X2, 
 
 			//Set
 			UInt32 Offset = y * Surface->Width + x;
-			Surface->Framebuffer[Offset] = Color;
+			Surface->Buffer[Offset] = Color;
 		}
 	}
 	//X > Y
@@ -302,13 +374,23 @@ void DrawLine(DrawSurface *Surface, UInt32 Y1, UInt32 X1, UInt32 Y2, UInt32 X2, 
 
 			//Set
 			UInt32 Offset = y * Surface->Width + x;
-			Surface->Framebuffer[Offset] = Color;
+			Surface->Buffer[Offset] = Color;
 		}
 	}
 }
 
 void DrawRectangle(DrawSurface *Surface, DrawSelection *Selection, UInt32 LineThickness, UInt32 LineColor, UInt32 FillColor)
 {
+	//Default Selection
+	DrawSelection DefaultSelection =
+	{
+		.Y = 0,
+		.X = 0,
+		.H = Surface->Height,
+		.W = Surface->Width
+	};
+	if(Selection == nullptr) Selection = &DefaultSelection;
+
 	//Color
 	UInt32 Color = 0;
 
@@ -335,70 +417,159 @@ void DrawRectangle(DrawSurface *Surface, DrawSelection *Selection, UInt32 LineTh
 			}
 
 			//Draw Pixel
-			Surface->Framebuffer[(y + Selection->Y) * Surface->Width + (x + Selection->X)] = Color;
+			Surface->Buffer[(y + Selection->Y) * Surface->Width + (x + Selection->X)] = Color;
 		}
 	}
 }
 
-//-------------------------------------------------------------------------------------------------------------------------//
-//Printing
-
-void Print(DrawSurface *Surface, ConsoleState *Console, const char *Text, UInt32 Color)
+void DrawCircle(DrawSurface *Surface, DrawSelection *Selection, Int32 Radius, UInt32 LineThickness, UInt32 LineColor, UInt32 FillColor)
 {
-	//Loop Characters
-	char *Character = (char *) Text;
-	while(*Character != '\0')
+	//Default Selection
+	DrawSelection DefaultSelection =
 	{
-		//Handle Newline
-		if(*Character == '\r' || *Character == '\n')
+		.Y = 0,
+		.X = 0,
+		.H = Surface->Height,
+		.W = Surface->Width
+	};
+	if(Selection == nullptr) Selection = &DefaultSelection;
+
+	//Loop Radius
+	Int32 x = 0, y = 0;
+	for(Int32 i = 0; i < Radius; i++)
+	{
+		//Bottom-Right
 		{
-			//LF
-			if(Character[0] == '\n')
-			{
-				//Set
-				Console->CursorY += 1;
-				Console->CursorX = 0;
-				Character += 1;
-				continue;
-			}
-			//CR-LF
-			else if(Character[0] == '\r' && Character[1] != '\0' && Character[1] == '\n')
-			{
-				//Set
-				Console->CursorY += 1;
-				Console->CursorX = 0;
-				Character += 2;
-				continue;
-			}
+			//X Counting
+			x = +i;
+			y = +SquareRoot(Power(Radius, 2) - Power(i, 2));
+			Surface->Buffer[(Selection->Y + Radius + y) * Surface->Width + (Selection->X + Radius + x)] = LineColor;
+
+			//Y Counting
+			x = +SquareRoot(Power(Radius, 2) - Power(i, 2));
+			y = +i;
+			Surface->Buffer[(Selection->Y + Radius + y) * Surface->Width + (Selection->X + Radius + x)] = LineColor;
 		}
 
-		//Print Character
-		//PrintCharacterAscii(Surface, Console, *Character, Console->CursorY, Console->CursorX, Color);
-		PrintCharacterPsf(Surface, Console, *Character, Console->CursorY, Console->CursorX, Color);
-
-		//Move Cursor
-		Console->CursorX += 1;
-
-		//Cursor Overflow
-		if((Console->CursorX + 1) * Console->ConsoleFontWidth > Surface->Width)
+		//Bottom-Left
 		{
-			//Set
-			Console->CursorY += 1;
-			Console->CursorX = 0;
+			//X Counting
+			x = -i;
+			y = +SquareRoot(Power(Radius, 2) - Power(i, 2));
+			Surface->Buffer[(Selection->Y + Radius + y) * Surface->Width + (Selection->X + Radius + x)] = LineColor;
+
+			//Y Counting
+			x = -SquareRoot(Power(Radius, 2) - Power(i, 2));
+			y = +i;
+			Surface->Buffer[(Selection->Y + Radius + y) * Surface->Width + (Selection->X + Radius + x)] = LineColor;
 		}
 
-		//Next Character
-		Character++;
+		//Top-Right
+		{
+			//X Counting
+			x = +i;
+			y = -SquareRoot(Power(Radius, 2) - Power(i, 2));
+			Surface->Buffer[(Selection->Y + Radius + y) * Surface->Width + (Selection->X + Radius + x)] = LineColor;
 
-		//Scroll
-		//TODO: Handle
+			//Y Counting
+			x = +SquareRoot(Power(Radius, 2) - Power(i, 2));
+			y = -i;
+			Surface->Buffer[(Selection->Y + Radius + y) * Surface->Width + (Selection->X + Radius + x)] = LineColor;
+		}
+
+		//Top-Left
+		{
+			//X Counting
+			x = -i;
+			y = -SquareRoot(Power(Radius, 2) - Power(i, 2));
+			Surface->Buffer[(Selection->Y + Radius + y) * Surface->Width + (Selection->X + Radius + x)] = LineColor;
+
+			//Y Counting
+			x = -SquareRoot(Power(Radius, 2) - Power(i, 2));
+			y = -i;
+			Surface->Buffer[(Selection->Y + Radius + y) * Surface->Width + (Selection->X + Radius + x)] = LineColor;
+		}
 	}
 }
 
-void Print(const char *Text, UInt32 Color)
+void DrawEllipse(DrawSurface *Surface, DrawSelection *Selection, double RadiusA, double RadiusB, UInt32 LineThickness, UInt32 LineColor, UInt32 FillColor)
 {
-	//Print
-	return Print(&FramebufferUefi.FrontBuffer, &FramebufferUefi.Console, Text, Color);
+	//Default Selection
+	DrawSelection DefaultSelection =
+	{
+		.Y = 0,
+		.X = 0,
+		.H = Surface->Height,
+		.W = Surface->Width
+	};
+	if(Selection == nullptr) Selection = &DefaultSelection;
+
+	//Loop Radius
+	Int32 x = 0, y = 0, Index = 0;
+	for(Int32 i = 0; i < RadiusA; i++)
+	{
+		SLOW
+
+		//Bottom-Right
+		{
+			//X Counting
+			x = + i;
+			y = + (RadiusB / RadiusA) * SquareRoot(Power(RadiusA, 2) - Power(x, 2));
+			Index = (Selection->Y + RadiusB + y) * Surface->Width + (Selection->X + RadiusA + x);
+			Surface->Buffer[Index] = 0x00FF0000; //LineColor;
+
+			//Y Counting
+			x = + (RadiusA / RadiusB) * SquareRoot(Power(RadiusB, 2) - Power(y, 2));
+			y = + i;
+			Index = (Selection->Y + RadiusB + y) * Surface->Width + (Selection->X + RadiusA + x);
+			Surface->Buffer[Index] = 0x00F00000; //LineColor;
+		}
+
+		//Bottom-Left
+		{
+			//X Counting
+			x = - i;
+			y = + (RadiusB / RadiusA) * SquareRoot(Power(RadiusA, 2) - Power(x, 2));
+			Index = (Selection->Y + RadiusB + y) * Surface->Width + (Selection->X + RadiusA + x);
+			Surface->Buffer[Index] = 0x0000FF00; //LineColor;
+
+			//Y Counting
+			x = - (RadiusA / RadiusB) * SquareRoot(Power(RadiusB, 2) - Power(y, 2));
+			y = + i;
+			Index = (Selection->Y + RadiusB + y) * Surface->Width + (Selection->X + RadiusA + x);
+			Surface->Buffer[Index] = 0x0000F000; //LineColor;
+		}
+
+		//Top-Right
+		{
+			//X Counting
+			x = + i;
+			y = - (RadiusB / RadiusA) * SquareRoot(Power(RadiusA, 2) - Power(x, 2));
+			Index = (Selection->Y + RadiusB + y) * Surface->Width + (Selection->X + RadiusA + x);
+			Surface->Buffer[Index] = 0x000000FF; //LineColor;
+
+			//Y Counting
+			x = + (RadiusA / RadiusB) * SquareRoot(Power(RadiusB, 2) - Power(y, 2));
+			y = - i;
+			Index = (Selection->Y + RadiusB + y) * Surface->Width + (Selection->X + RadiusA + x);
+			Surface->Buffer[Index] = 0x000000F0; //LineColor;
+		}
+
+		//Top-Left
+		{
+			//X Counting
+			x = - i;
+			y = - (RadiusB / RadiusA) * SquareRoot(Power(RadiusA, 2) - Power(x, 2));
+			Index = (Selection->Y + RadiusB + y) * Surface->Width + (Selection->X + RadiusA + x);
+			Surface->Buffer[Index] = 0x00FFFFFF; //LineColor;
+
+			//Y Counting
+			x = - (RadiusA / RadiusB) * SquareRoot(Power(RadiusB, 2) - Power(y, 2));
+			y = - i;
+			Index = (Selection->Y + RadiusB + y) * Surface->Width + (Selection->X + RadiusA + x);
+			Surface->Buffer[Index] = 0x00999999; //LineColor;
+		}
+	}
 }
 
 //-------------------------------------------------------------------------------------------------------------------------//

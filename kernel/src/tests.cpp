@@ -8,8 +8,9 @@
 
 #include<include/globals.h>
 
-//#include<ui/framebuffer.h>
 #include<ui/draw.h>
+#include<ui/font.h>
+#include<ui/framebuffer.h>
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Information
@@ -39,9 +40,48 @@ void TestAllocate()
 	//Allocate
 	TestX *Test = new TestX();
 	Test->i = 5;
-	PrintFormatted("i = %d\r\n", Test->i);
+	LogFormatted("i = %d\r\n", Test->i);
 	delete[] Test;
 }
+
+void TestAllocateAdvanced()
+{
+	DumpAllocationTableIntelligent();
+
+	char *Test1 = (char *) ReserveMemory(25);
+	char *Test2 = (char *) ReserveMemory(137);
+	char *Test3 = (char *) ReserveMemory(295);
+	char *Test4 = (char *) ReserveMemory(316);
+
+	DumpAllocationTableIntelligent();
+
+	FreeMemory(Test2);
+	FreeMemory(Test3);
+
+	DumpAllocationTableIntelligent();
+
+	char *Test5 = (char *) ReserveMemory(17);
+	char *Test6 = (char *) ReserveMemory(34);
+
+	DumpAllocationTableIntelligent();
+
+	FreeMemory(Test1);
+	FreeMemory(Test4);
+
+	DumpAllocationTableIntelligent();
+
+	FreeMemory(Test6);
+	FreeMemory(Test5);
+
+	DumpAllocationTableIntelligent();
+
+	DumpAllocationTableRaw();
+}
+
+//Test Alloc Advanced
+//void TestAllocateAdvanced();
+//TestAllocateAdvanced();
+//asm("cli;hlt");
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Test Collections
@@ -97,7 +137,7 @@ void TestCollections()
 
 	for(auto Element : TestList)
 	{
-		PrintFormatted("List: %d\r\n", Element);
+		LogFormatted("List: %d\r\n", Element);
 	}
 
 	Queue<int> TestQueue; // = new Queue<int>();
@@ -109,7 +149,7 @@ void TestCollections()
 
 	for(auto Element : TestQueue)
 	{
-		PrintFormatted("Queue: %d\r\n", Element);
+		LogFormatted("Queue: %d\r\n", Element);
 	}
 }
 
@@ -143,24 +183,24 @@ UInt32 MousePointerBitmapTest[] =
 void TestUi()
 {
 	//Test
-	Print(&FramebufferUefi.FrontBuffer, &FramebufferUefi.Console, "Hello !\r\n", 0x00000000); //0x00FCFCFC
-	PrintFormatted("Test %s %d wow !\r\n", "Hello", 123);
-	PrintFormatted("Size %d %d %d %d\r\n", sizeof(Int8), sizeof(Int16), sizeof(Int32), sizeof(Int64));
-	PrintFormatted("Size %d %d %d %d %d\r\n", sizeof(char), sizeof(short), sizeof(int), sizeof(long), sizeof(long long));
+	PrintTo(&FramebufferUefi.FrontBuffer, nullptr, &FramebufferUefi.Console, 0x00000000, 0x00000000, "Hello !\r\n"); //0x00FCFCFC
+	LogFormatted("Test %s %d wow !\r\n", "Hello", 123);
+	LogFormatted("Size %d %d %d %d\r\n", sizeof(Int8), sizeof(Int16), sizeof(Int32), sizeof(Int64));
+	LogFormatted("Size %d %d %d %d %d\r\n", sizeof(char), sizeof(short), sizeof(int), sizeof(long), sizeof(long long));
 
 	//Draw Lines
-	DrawLine(&FramebufferUefi.FrontBuffer, 0, 0, 100, 0,   0x00FF0000);
-	DrawLine(&FramebufferUefi.FrontBuffer, 0, 0, 0, 100,   0x00FF0000);
+	DrawLine(&FramebufferUefi.FrontBuffer, nullptr, 0, 0, 100, 0,   0x00FF0000);
+	DrawLine(&FramebufferUefi.FrontBuffer, nullptr, 0, 0, 0, 100,   0x00FF0000);
 
-	DrawLine(&FramebufferUefi.FrontBuffer, 0, 0, 100, 100, 0x000000FF);
+	DrawLine(&FramebufferUefi.FrontBuffer, nullptr, 0, 0, 100, 100, 0x000000FF);
 
-	DrawLine(&FramebufferUefi.FrontBuffer, 0, 0, 200, 100, 0x000000FF);
-	DrawLine(&FramebufferUefi.FrontBuffer, 0, 0, 100, 200, 0x000000FF);
+	DrawLine(&FramebufferUefi.FrontBuffer, nullptr, 0, 0, 200, 100, 0x000000FF);
+	DrawLine(&FramebufferUefi.FrontBuffer, nullptr, 0, 0, 100, 200, 0x000000FF);
 
-	DrawLine(&FramebufferUefi.FrontBuffer, 0, 0, 350, 100, 0x000000FF);
-	DrawLine(&FramebufferUefi.FrontBuffer, 0, 0, 100, 350, 0x000000FF);
+	DrawLine(&FramebufferUefi.FrontBuffer, nullptr, 0, 0, 350, 100, 0x000000FF);
+	DrawLine(&FramebufferUefi.FrontBuffer, nullptr, 0, 0, 100, 350, 0x000000FF);
 
-	DrawLine(&FramebufferUefi.FrontBuffer, 0, 0, 0, 0,     0x0000FF00);
+	DrawLine(&FramebufferUefi.FrontBuffer, nullptr, 0, 0, 0, 0,     0x0000FF00);
 
 	//Draw Rectangle
 	int Height = 100;
@@ -213,7 +253,7 @@ void TestUi()
 		};
 		DrawSurface Mouse
 		{
-			.Framebuffer = MousePointerBitmapTest,
+			.Buffer = MousePointerBitmapTest,
 			.BitsPerPixel = 32,
 			.Height = 20,
 			.Width = 12
@@ -271,7 +311,7 @@ void TestDesktop()
 		UInt32 *WindowBuffer = (UInt32 *) ReserveMemory(WindowHeight * WindowWidth);
 		DrawSurface WindowSurface
 		{
-			.Framebuffer = WindowBuffer,
+			.Buffer = WindowBuffer,
 			.BitsPerPixel = 32,
 			.Height = WindowHeight,
 			.Width = WindowWidth
@@ -296,13 +336,13 @@ void TestDesktop()
 			.W = WindowWidth - 2
 		};
 		DrawRectangle(&WindowSurface, &TitlebarSelection, 1, 0xFFFFFFFF, 0xFF000000);
-		Print(&WindowSurface, &Console, " Editor\r\n", 0x00FFFFFF);
+		PrintTo(&WindowSurface, nullptr, &Console, 0x00000000, 0x00FFFFFF, " Editor\r\n");
 
 		//Window Text
-		Print(&WindowSurface, &Console, " 1 Lorem ipsum dolor sit amet.\r\n", 0x00000000);
-		Print(&WindowSurface, &Console, " 2 Lorem ipsum dolor sit amet.\r\n", 0x00000000);
-		Print(&WindowSurface, &Console, " 3 Lorem ipsum dolor sit amet.\r\n", 0x00000000);
-		Print(&WindowSurface, &Console, " 4 Lorem ipsum dolor sit amet.\r\n", 0x00000000);
+		PrintTo(&WindowSurface, nullptr, &Console, 0x00000000, 0x00000000, " 1 Lorem ipsum dolor sit amet.\r\n");
+		PrintTo(&WindowSurface, nullptr, &Console, 0x00000000, 0x00000000, " 2 Lorem ipsum dolor sit amet.\r\n");
+		PrintTo(&WindowSurface, nullptr, &Console, 0x00000000, 0x00000000, " 3 Lorem ipsum dolor sit amet.\r\n");
+		PrintTo(&WindowSurface, nullptr, &Console, 0x00000000, 0x00000000, " 4 Lorem ipsum dolor sit amet.\r\n");
 
 		//Copy to Screen
 		DrawSelection ScreenSelection
@@ -338,7 +378,7 @@ void TestDesktop()
 		};
 		DrawSurface Mouse =
 		{
-			.Framebuffer = MousePointerBitmapTest,
+			.Buffer = MousePointerBitmapTest,
 			.BitsPerPixel = 32,
 			.Height = 20,
 			.Width = 12
@@ -357,7 +397,7 @@ void Logo()
 {
 	DrawSurface LogoSurface
 	{
-		.Framebuffer = (UInt32 *) LogoImage.Data,
+		.Buffer = (UInt32 *) LogoImage.Data,
 		.BitsPerPixel = 32,
 		.Height = LogoImage.Height,
 		.Width = LogoImage.Width
@@ -431,7 +471,7 @@ void TestAp(UInt64 Core)
 		{
 			for(int x = 0; x < 25; x++)
 			{
-				FramebufferUefi.FrontBuffer.Framebuffer[((y) * FramebufferUefi.FrontBuffer.Width + (x + Offset))] = Color;
+				FramebufferUefi.FrontBuffer.Buffer[((y) * FramebufferUefi.FrontBuffer.Width + (x + Offset))] = Color;
 			}
 		}
 
@@ -457,7 +497,7 @@ void TestSyscalls()
 	UInt64 Result0 = ApiNull();
 	UInt64 Result1 = ApiAvg(0, 1, 2, 3);
 	UInt64 Result2 = ApiMax(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
-	PrintFormatted("Called: %d %d %d\r\n", Result0, Result1, Result2);
+	LogFormatted("Called: %d %d %d\r\n", Result0, Result1, Result2);
 }
 
 void TestThread()
@@ -477,7 +517,7 @@ void TestThread()
 		//{
 		//	for(int x = 0; x < 25; x++)
 		//	{
-		//		FramebufferUefi.FrontBuffer.Framebuffer[((y) * FramebufferUefi.FrontBuffer.Width + (x + Offset))] = Color;
+		//		FramebufferUefi.FrontBuffer.Buffer[((y) * FramebufferUefi.FrontBuffer.Width + (x + Offset))] = Color;
 		//	}
 		//}
 
@@ -505,7 +545,7 @@ void TestPaging()
 {
 	//Size
 	int Size = sizeof(VirtualAddress);
-	PrintFormatted("%d\r\n", Size);
+	LogFormatted("%d\r\n", Size);
 
 	//Partition Address To
 	VirtualAddress VaTo;
@@ -514,7 +554,7 @@ void TestPaging()
 	VaTo.IndexL1 = 511;
 
 	//Debug
-	PrintFormatted("%d = %d(%d:%d:%d:%d:%d)-%d\r\n"
+	LogFormatted("%d = %d(%d:%d:%d:%d:%d)-%d\r\n"
 		, VaTo.Value
 		, VaTo.Page
 		, VaTo.IndexL5
@@ -535,7 +575,7 @@ void TestPaging()
 	//VaFrom.Offset = 0;
 
 	//Debug
-	PrintFormatted("%d = %d(%d:%d:%d:%d:%d)-%d\r\n"
+	LogFormatted("%d = %d(%d:%d:%d:%d:%d)-%d\r\n"
 		, VaFrom.Value
 		, VaFrom.Page
 		, VaFrom.IndexL5
@@ -545,4 +585,16 @@ void TestPaging()
 		, VaFrom.IndexL1
 		, VaFrom.Offset
 	);
+}
+
+//-------------------------------------------------------------------------------------------------------------------------//
+//Test IPI
+
+#include<kernel/int/types/ipi.h>
+
+void TestIpi()
+{
+	//Test IPI
+	for(int i = 0; i < 20000000; i++) asm("nop");
+	SendTestIpi();
 }

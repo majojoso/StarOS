@@ -19,7 +19,7 @@
 //-------------------------------------------------------------------------------------------------------------------------//
 //Prototypes
 
-void LoadProcess(char *Name, char *Path, bool Usermode);
+void LoadProcess(char *Name, char *Path, bool User, bool Usermode, UInt64 Core);
 
 void InitializeProcess();
 void DeinitializeProcess();

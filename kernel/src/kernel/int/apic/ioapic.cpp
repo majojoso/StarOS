@@ -188,11 +188,11 @@ public:
 
 void DumpIoApic(IoApic *Apic)
 {
-	PrintFormatted("[APIC] IOAPIC Dump:\r\n");
+	LogFormatted("[APIC] IOAPIC Dump:\r\n");
 	for(int i = 0; i < IOAPIC_COUNT_MAX; i++) //Apic->Count
 	{
 		RedirectionEntry Entry = Apic->ReadRedirectionEntry(i);
-		PrintFormatted("[APIC]   %d: L%d.V%d %s %s %s %d %d\r\n"
+		LogFormatted("[APIC]   %d: L%d.V%d %s %s %s %d %d\r\n"
 			, i, Entry.Destination, Entry.Vector
 			, Entry.DestinationMode ? "LO" : "PH", Entry.PinPolarity ? "LO" : "HI", Entry.TriggerMode ? "LV" : "ED", Entry.DeliveryMode, Entry.DeliveryStatus
 		);

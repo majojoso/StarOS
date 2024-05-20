@@ -51,6 +51,56 @@ Int64 Limit(Int64 Value, Int64 Min, Int64 Max)
 	;
 }
 
+double FAbs(double n)
+{
+	return (n < 0.0) ? -n : n;
+}
+
+double FMin(double a, double b)
+{
+	return (a < b) ? a : b;
+}
+
+double FMax(double a, double b)
+{
+	return (a > b) ? a : b;
+}
+
+double FLimit(double Value, double Min, double Max)
+{
+	return
+		Value < Min
+			? Min
+			: Value > Max
+				? Max
+				: Value
+	;
+}
+
+double Power(double x, int n)
+{
+	double Result = 1;
+	for(int i = 0; i < n; i++) Result *= x;
+	return Result;
+}
+
+double SquareRoot(double Square)
+{
+	double A = 1;
+	double B = Square;
+	while(true)
+	{
+		double Middle = A + (B - A) / 2;
+
+		A = Square / Middle;
+		B = Middle;
+
+		if((B - A) < 0.000001) break;
+	}
+
+	return A;
+}
+
 //-------------------------------------------------------------------------------------------------------------------------//
 //Units
 
@@ -62,6 +112,39 @@ Int64 DivideFloor(Int64 Value, Int64 Divisor)
 Int64 DivideCeiling(Int64 Value, Int64 Divisor)
 {
 	return (Value / Divisor) + (((Value % Divisor) > 0) ? 1 : 0);
+}
+
+Int64 DivideRemainder(Int64 Value, Int64 Divisor)
+{
+	return Value % Divisor;
+}
+
+UInt64 DivideFloorU(UInt64 Value, UInt64 Divisor)
+{
+	return (Value / Divisor);
+}
+
+UInt64 DivideCeilingU(UInt64 Value, UInt64 Divisor)
+{
+	return (Value / Divisor) + (((Value % Divisor) > 0) ? 1U : 0U);
+}
+
+UInt64 DivideRemainderU(UInt64 Value, UInt64 Divisor)
+{
+	return Value % Divisor;
+}
+
+//-------------------------------------------------------------------------------------------------------------------------//
+//Alignment
+
+Int64 AlignTo(Int64 Value, Int64 Alignment)
+{
+	return ((Value / Alignment) * Alignment) + (((Value % Alignment) > 0) ? Alignment : 0);
+}
+
+UInt64 AlignToU(UInt64 Value, UInt64 Alignment)
+{
+	return ((Value / Alignment) * Alignment) + (((Value % Alignment) > 0U) ? Alignment : 0U);
 }
 
 //-------------------------------------------------------------------------------------------------------------------------//
@@ -253,6 +336,25 @@ char *IntToString(Int64 Value, char *Buffer, Int64 Base)
 		Buffer[k] = Buffer[l];
 		Buffer[l] = Temp;
 	}
+
+	//Result
+	return Buffer;
+}
+
+char *FloatToString(double Value, char *Buffer, UInt64 Precision)
+{
+	//Calculate
+	bool Sign = (Value < 0.0);
+	double Number = FAbs(Value);
+	Int64 Integer = (Int64) Number;
+	double Rest = Number - Integer;
+	Int64 Fraction = (Int64) (Rest * Power(10, Precision));
+
+	//Concat
+	if(Sign) StringConcat("-", 1, Buffer, 128);
+	IntToString(Integer, &Buffer[StringLength(Buffer)], 10);
+	StringConcat(".", 1, Buffer, 128);
+	IntToString(Fraction, &Buffer[StringLength(Buffer)], 10);
 
 	//Result
 	return Buffer;

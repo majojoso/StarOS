@@ -36,15 +36,15 @@ void InterruptsActive(bool Active)
 void InitializeInterrupts()
 {
 	//ISA
-	IoapicRedirectIsaInterrupt(1, 1, 0);
-	IoapicRedirectIsaInterrupt(12, 12, 0);
+	//IoapicRedirectIsaInterrupt(InterruptId, Irq, Lapic)
+	//IoapicRedirectIsaInterrupt(0, 0, 0);
 
 	//PCI
 	//IoapicRedirectPciInterrupt(Bus, Irq, InterruptId, Lapic);
 	//IoapicRedirectPciInterrupt(0, 0, 0, 0);
 
 	//Debug
-	DumpIoApics();
+	//DumpIoApics();
 }
 
 void DeinitializeInterrupts()

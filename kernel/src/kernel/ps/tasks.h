@@ -22,7 +22,7 @@
 //Prototypes
 
 UInt64 GetProcessId();
-Task *CreateTask(char *Name, void (*Routine)(), bool Usermode);
+Task *CreateTask(char *Name, void (*Routine)(), bool User, bool Usermode, UInt64 Core);
 
 void InitializeTasks();
 void DeinitializeTasks();

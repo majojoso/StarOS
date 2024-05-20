@@ -21,16 +21,16 @@
 
 struct IrqHandler
 {
-	void (*Handler)(RegisterSet *Registers);
+	void (*Handler)(UInt64 Core, RegisterSet *Registers);
 };
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Prototypes
 
-void IrqHandlerRoutine(RegisterSet *Registers, int Id);
+void IrqHandlerRoutine(UInt64 Core, RegisterSet *Registers, int Id);
 
-void IrqInstallHandler(int Id, void (*Handler)(RegisterSet *Registers));
-bool IrqUninstallHandler(int Id, void (*Handler)(RegisterSet *Registers));
+void IrqInstallHandler(int Id, void (*Handler)(UInt64 Core, RegisterSet *Registers));
+bool IrqUninstallHandler(int Id, void (*Handler)(UInt64 Core, RegisterSet *Registers));
 
 void InitializeHandler();
 void DeinitializeHandler();

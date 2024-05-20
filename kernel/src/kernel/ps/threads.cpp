@@ -12,7 +12,12 @@
 
 #include<kernel/cpu/gdt.h>
 
+#include<kernel/cpu/cpuid.h>
+#include<kernel/smp/smp.h>
+
 #include<kernel/mm/vmm.h>
+
+#include<kernel/cpu/tss.h>
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Information
@@ -33,14 +38,18 @@ CoreThreadManager *CoreThreadManagers[MAX_CORES];
 //-------------------------------------------------------------------------------------------------------------------------//
 //Idle Thread
 
-void IdleThreadRoutine(UInt64 Core)
+void IdleThreadRoutine()
 {
+	//Core
+	UInt8 ApicId = CpuidGetLapicId();
+	UInt64 Core = GetCoreFromApicId(ApicId);
+
 	//Loop
 	volatile UInt64 Counter = 0;
 	while(true)
 	{
 		//Debug
-		//if(Core == 0) PrintFormatted("Idle Core %d: %d\r\n", Core, Counter);
+		//LogFormatted("Idle Core %d: %d\r\n", Core, Counter);
 
 		//Count
 		Counter++;
@@ -53,10 +62,10 @@ void IdleThreadRoutine(UInt64 Core)
 //-------------------------------------------------------------------------------------------------------------------------//
 //API
 
-Thread *CreateThread(UInt64 Id, Task *ParentTask, void (*Routine)(), void *Stack, UInt64 StackSize, bool Usermode)
+Thread *CreateThread(UInt64 Id, Task *ParentTask, void (*Routine)(), void *Stack, UInt64 StackSize, bool User, bool Usermode, UInt64 Core)
 {
 	//Debug
-	PrintFormatted("CreateThread: #%d @0x%x\r\n", Id, Routine);
+	LogFormatted("CreateThread: #%d @0x%x\r\n", Id, Routine);
 
 	//Create
 	Thread *NewThread = new Thread();
@@ -69,9 +78,9 @@ Thread *CreateThread(UInt64 Id, Task *ParentTask, void (*Routine)(), void *Stack
 	NewThread->State = ThrReady;
 
 	//Statistics
-	NewThread->Statistics.CyclesTotal = 0;
-	NewThread->Statistics.CyclesInterval = 0;
+	NewThread->Statistics.CyclesCurrent = 0;
 	NewThread->Statistics.CyclesPrevious = 0;
+	NewThread->Statistics.CyclesInterval = 0;
 	NewThread->Statistics.Switches = 0;
 	NewThread->Statistics.Percentage = 0;
 
@@ -82,16 +91,24 @@ Thread *CreateThread(UInt64 Id, Task *ParentTask, void (*Routine)(), void *Stack
 	NewThread->SleepTicksBegin = 0;
 	NewThread->SleepTicksEnd = 0;
 
-	//Kernel Stack Memory Allocate
-	//NewThread->KernelStack = Usermode
-	//	? ((UInt64) ReserveMemory(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE - STACK_OFFSET)
-	//	: (TSS[0].IST2) //Hardcoded Core
-	//;
-
-	//Kernel Stack Paging
-	UInt64 StackOffsetKernel = Id * 4;
-	MapAddressRange(NewThread->ParentTask->PagingPointer, GB(7) + KB(StackOffsetKernel), GB(7) + KB(StackOffsetKernel) + KB(4), true, false, Usermode);
-	NewThread->KernelStack = GB(7) + KB(StackOffsetKernel) + KB(4) - STACK_OFFSET;
+	//Kernel Stack
+	if(User)
+	{
+		//Paging
+		UInt64 StackOffsetKernel = Id * 4;
+		NewThread->KernelStackBegin = KERN_STACK_ADDR + KB(StackOffsetKernel);
+		NewThread->KernelStackEnd = NewThread->KernelStackBegin + KERN_STACK_SIZE;
+		NewThread->KernelStackPointer = NewThread->KernelStackEnd - STACK_OFFSET;
+		VmmMapAddressRange(NewThread->ParentTask->PagingPointer, NewThread->KernelStackBegin, NewThread->KernelStackEnd, true, false, Usermode);
+	}
+	else
+	{
+		//Memory Allocate
+		NewThread->KernelStackPointer = Usermode
+			? ((UInt64) ReserveMemory(KERN_STACK_SIZE) + KERN_STACK_SIZE - STACK_OFFSET)
+			: TssGetKernelIST2(Core)
+		;
+	}
 
 	//Registers
 	RegisterSet *Registers = &NewThread->Registers;
@@ -106,22 +123,35 @@ Thread *CreateThread(UInt64 Id, Task *ParentTask, void (*Routine)(), void *Stack
 	Registers->cs = Usermode ? SELECTOR_USER_CODE : SELECTOR_KERN_CODE;
 	Registers->rip = (UInt64) Routine;
 
-	//User Stack Memory Allocate
-	//Registers->rsp = (Stack != nullptr) ? ((UInt64) Stack + StackSize - STACK_OFFSET) : ((UInt64) ReserveMemory(THREAD_STACK_SIZE) + THREAD_STACK_SIZE - STACK_OFFSET);
-	//Registers->rbp = Registers->rsp;
+	//User Stack
+	if(User)
+	{
+		//Paging
+		UInt64 StackOffsetUser = Id * 4;
+		NewThread->UserStackBegin = USER_STACK_ADDR + KB(StackOffsetUser);
+		NewThread->UserStackEnd = NewThread->UserStackBegin + USER_STACK_SIZE;
+		NewThread->UserStackPointer = NewThread->UserStackEnd - STACK_OFFSET;
+		Registers->rsp = NewThread->UserStackPointer;
+		Registers->rbp = Registers->rsp;
+		VmmMapAddressRange(ParentTask->PagingPointer, NewThread->UserStackBegin, NewThread->UserStackEnd, true, false, Usermode);
+	}
+	else
+	{
+		//Memory Allocate
+		Registers->rsp = (Stack != nullptr) ? ((UInt64) Stack + StackSize - STACK_OFFSET) : ((UInt64) ReserveMemory(USER_STACK_SIZE) + USER_STACK_SIZE - STACK_OFFSET);
+		Registers->rbp = Registers->rsp;
+	}
 
-	//User Stack Paging
-	UInt64 StackOffsetUser = Id * 4;
-	MapAddressRange(ParentTask->PagingPointer, GB(6) + KB(StackOffsetUser), GB(6) + KB(StackOffsetUser) + THREAD_STACK_SIZE, true, false, Usermode);
-	Registers->rsp = GB(6) + KB(StackOffsetUser) + THREAD_STACK_SIZE - STACK_OFFSET;
-	Registers->rbp = Registers->rsp;
+	//Registers FX State
+	NewThread->FxState = (UInt8 *) ReserveMemory(512);
+	MemorySet(NewThread->FxState, 0, 512);
 
 	//Debug
 	//PrintFormatted("Stack Memory: %H\r\n", Registers->rsp);
 	//PrintFormatted("Stack Paging: %H, TTO: %H\r\n", Registers->rsp, StackOffsetUser);
 
 	//Add
-	CoreThreadManagers[0]->QueueReady->AddTail(NewThread); //TODO: Remove Hardcode
+	CoreThreadManagers[Core]->QueueReady->AddTail(NewThread);
 
 	//Result
 	return NewThread;

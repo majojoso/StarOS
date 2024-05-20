@@ -2,6 +2,6 @@
 ## Global Options                                                               ##
 ##################################################################################
 
-LOOP      = loop26
+LOOP      = loop24
 DEBUG     = false
 USEKVM    = true

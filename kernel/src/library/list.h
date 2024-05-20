@@ -81,6 +81,8 @@ public:
 		//Data
 		ListNode<T> *New = new ListNode<T>();
 		New->Data = Data;
+		New->Previous = nullptr;
+		New->Next = nullptr;
 
 		//Link Forward
 		if(Previous == nullptr) Head = New;
@@ -173,7 +175,7 @@ public:
 			else Next->Previous = Previous;
 
 			T Data = Current->Data;
-			FreeMemory(Current);
+			delete Current;
 
 			return Data;
 		}
@@ -207,7 +209,7 @@ public:
 
 			if(Second == nullptr) Tail = Head;
 
-			FreeMemory(First);
+			delete First;
 
 			return Data;
 		}*/
@@ -229,7 +231,7 @@ public:
 
 			if(Prelast == nullptr) Head = Tail;
 
-			FreeMemory(Last);
+			delete Last;
 
 			return Data;
 		}*/

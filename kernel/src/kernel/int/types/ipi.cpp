@@ -17,6 +17,9 @@
 #include<kernel/int/apic/lapic.h>
 #include<kernel/int/api/handler.h>
 
+#include<kernel/cpu/cpuid.h>
+#include<kernel/smp/smp.h>
+
 //-------------------------------------------------------------------------------------------------------------------------//
 //Information
 
@@ -44,17 +47,24 @@ extern "C" RegisterSet *HandlerIpiGeneral(int Id, RegisterSet *Registers)
 	//Result
 	RegisterSet *Result = Registers;
 
+	//Core
+	UInt8 ApicId = CpuidGetLapicId();
+	UInt64 Core = GetCoreFromApicId(ApicId);
+
 	//Log
 	#if 1
-	//if(Id != 0)
-	{
-		PrintFormatted("IPI%d\r\n", Id);
-		//DumpRegisters(Registers);
-	}
+	LogFormatted("Core %d IPI%d\r\n", Core, Id);
+	//DumpRegisters(Registers);
 	#endif
 
+	//Halt IPI
+	if(Id == 255)
+	{
+		while(true) asm("cli;hlt");
+	}
+
 	//Handlers
-	//IpiHandlerRoutine(Registers, Id);
+	//IpiHandlerRoutine(Core, Registers, Id);
 
 	//Acknowledge IRQ
 	LapicIrqAck();
@@ -69,6 +79,11 @@ extern "C" RegisterSet *HandlerIpiGeneral(int Id, RegisterSet *Registers)
 void SendTestIpi()
 {
 	LapicSendIpiRaw(0, ICR_DST_SELF | ICR_DEL_MOD_FIXED | LapicIcrVector(255U)); //Interrupt / IDT Entry //ICR_DST_OTHER ICR_DST_ALL
+}
+
+void SendHaltIpi()
+{
+	LapicSendIpiRaw(0, ICR_DST_OTHER | ICR_DEL_MOD_FIXED | LapicIcrVector(255U)); //Interrupt / IDT Entry //ICR_DST_OTHER ICR_DST_ALL
 }
 
 //-------------------------------------------------------------------------------------------------------------------------//

@@ -17,6 +17,9 @@
 #include<kernel/int/apic/lapic.h>
 #include<kernel/int/api/handler.h>
 
+#include<kernel/cpu/cpuid.h>
+#include<kernel/smp/smp.h>
+
 #include<kernel/ps/scheduler.h>
 
 //-------------------------------------------------------------------------------------------------------------------------//
@@ -302,28 +305,31 @@ extern "C" RegisterSet *HandlerIrqGeneralPic(int Id, RegisterSet *Registers)
 	//Handle Spurious Irq
 	if(HandleSpuriousIrq(Id)) return Result;
 
-	//Log
+	//LogFormatted
 	#if 0
 	if(Id != 0)
 	{
-		PrintFormatted("IRQ%d\r\n", Id);
-		PrintFormatted("Registers: Code %d:%d Data %d:%d Flags %d\r\n", Registers->cs, Registers->ip, Registers->ss, Registers->sp, Registers->flags);
+		LogFormatted("IRQ%d\r\n", Id);
+		LogFormatted("Registers: Code %d:%d Data %d:%d Flags %d\r\n", Registers->cs, Registers->ip, Registers->ss, Registers->sp, Registers->flags);
 	}
 	#endif
+
+	//Core
+	UInt64 Core = 0;
 
 	//Handle
 	if(Id == 0)
 	{
 		//Scheduler
-		Result = SchedulerHandlerRoutine(Registers);
+		Result = SchedulerHandlerRoutine(Core, Registers);
 
 		//Handlers
-		IrqHandlerRoutine(Registers, Id);
+		IrqHandlerRoutine(Core, Registers, Id);
 	}
 	else
 	{
 		//Handlers
-		IrqHandlerRoutine(Registers, Id);
+		IrqHandlerRoutine(Core, Registers, Id);
 	}
 
 	//Acknowledge IRQ
@@ -345,28 +351,35 @@ extern "C" RegisterSet *HandlerIrqGeneralApic(int Id, RegisterSet *Registers)
 	//if(Id == 0 && HandleSpuriousIrq(Id)) return Result;
 	//TODO: Replace 0 by correct vector for PIC and uncomment
 
-	//Log
+	//LogFormatted
 	#if 0
 	if(Id != 0)
 	{
-		PrintFormatted("IRQ%d\r\n", Id);
+		LogFormatted("IRQ%d\r\n", Id);
 		DumpRegisters(Registers);
 	}
 	#endif
+
+	//Core
+	UInt8 ApicId = CpuidGetLapicId();
+	UInt64 Core = GetCoreFromApicId(ApicId);
+
+	//Debug
+	//LogFormatted("Core %d IRQ%d\r\n", Core, Id);
 
 	//Handle
 	if(Id == 0)
 	{
 		//Scheduler
-		Result = SchedulerHandlerRoutine(Registers);
+		Result = SchedulerHandlerRoutine(Core, Registers);
 
 		//Handlers
-		IrqHandlerRoutine(Registers, Id);
+		IrqHandlerRoutine(Core, Registers, Id);
 	}
 	else
 	{
 		//Handlers
-		IrqHandlerRoutine(Registers, Id);
+		IrqHandlerRoutine(Core, Registers, Id);
 	}
 
 	//Acknowledge IRQ

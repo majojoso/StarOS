@@ -12,6 +12,11 @@
 
 #include<kernel/int/api/timer.h>
 
+#include<kernel/ps/syscalls.h>
+#include<kernel/api/apis.h>
+
+#include<kernel/ps/tasks.h>
+
 #include<ui/draw.h>
 #include<ui/compositor.h>
 
@@ -24,35 +29,40 @@
 //-------------------------------------------------------------------------------------------------------------------------//
 //Declarations
 
-Int32 BallSpeedX = 15;
-Int32 BallSpeedY = 15;
-
-Int32 FrameMargin = 10;
-
 const UInt32 WindowHeight = 200;
 const UInt32 WindowWidth = 300;
+const Int32 FrameMargin = 10;
+
+const Int32 TimerInterval = 250;
+
+const Int32 BallSpeed = 15;
+const Int32 BallSize = 5;
+const Int32 BoardSize = 20;
+
+Int32 BallDirectionX = 1;
+Int32 BallDirectionY = 1;
+
 UInt32 WindowBuffer[WindowHeight * WindowWidth];
 UInt64 WindowHandle = 0;
 
 DrawSurface WindowSurface =
 {
-	.Framebuffer = WindowBuffer,
+	.Buffer = WindowBuffer,
 	.BitsPerPixel = 32,
 	.Height = WindowHeight,
 	.Width = WindowWidth
 };
 
 DrawSelection WindowSelection;
-
 DrawSelection FrameSelection;
 
 DrawSelection BoardSelection;
-
-DrawSelection BoardSelectionPrevious = BoardSelection;
+DrawSelection BoardSelectionPrevious;
 
 DrawSelection BallSelection;
+DrawSelection BallSelectionPrevious;
 
-DrawSelection BallSelectionPrevious = BallSelection;
+bool Running = false;
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Implementation
@@ -60,31 +70,44 @@ DrawSelection BallSelectionPrevious = BallSelection;
 //-------------------------------------------------------------------------------------------------------------------------//
 //Game
 
-void TimerCallback(RegisterSet *Registers)
+void PongTimerCallback(UInt64 Core, RegisterSet *Registers)
 {
 	//Undraw
 	{
-		//Board
-		DrawRectangle(&WindowSurface, &BoardSelectionPrevious, 1, 0xFFEFF4F9, 0xFFEFF4F9);
-
 		//Ball
 		DrawRectangle(&WindowSurface, &BallSelectionPrevious, 1, 0xFFEFF4F9, 0xFFEFF4F9);
+
+		//Board
+		DrawRectangle(&WindowSurface, &BoardSelectionPrevious, 1, 0xFFEFF4F9, 0xFFEFF4F9);
 	}
 
-	//Move Ball
-	BallSelection.X += BallSpeedX;
-	BallSelection.Y += BallSpeedY;
+	//Move Speed
+	for(int i = 0; i < BallSpeed; i++)
+	{
+		//Move Ball X
+		BallSelection.X += BallDirectionX;
 
-	//Limit Ball
-	Limit(BallSelection.X, 11, 289);
-	Limit(BallSelection.Y, 11, 289);
+		//Move Ball Y
+		BallSelection.Y += BallDirectionY;
 
-	//Turn Ball
-	if(BallSelection.X < 30 || BallSelection.X > WindowWidth  - 30) BallSpeedX = -BallSpeedX;
-	if(BallSelection.Y < 30 || BallSelection.Y > WindowHeight - 30) BallSpeedY = -BallSpeedY;
+		//Turn Ball X
+		if(BallSelection.X < FrameSelection.X + 1 || BallSelection.X > FrameSelection.X + FrameSelection.W - BallSize - 1)
+		{
+			BallDirectionX = -BallDirectionX;
+			BallSelection.X = Limit(BallSelection.X, FrameSelection.X + 1, FrameSelection.X + FrameSelection.W - BallSize - 1);
+		}
 
-	//Move Board
-	//BoardSelection.X = Max(BallSelection.X, 31);
+		//Turn Ball Y
+		if(BallSelection.Y < FrameSelection.Y + 1 || BallSelection.Y > FrameSelection.Y + FrameSelection.H - BallSize - 1)
+		{
+			BallDirectionY = -BallDirectionY;
+			BallSelection.Y = Limit(BallSelection.Y, FrameSelection.Y + 1, FrameSelection.Y + FrameSelection.H - BallSize - 1);
+		}
+	}
+
+	//Previous
+	BoardSelectionPrevious = BoardSelection;
+	BallSelectionPrevious = BallSelection;
 
 	//Draw
 	{
@@ -95,15 +118,11 @@ void TimerCallback(RegisterSet *Registers)
 		DrawRectangle(&WindowSurface, &BallSelection, 1, 0xFF7B919F, 0xFF7B919F);
 	}
 
-	//Previous
-	BoardSelectionPrevious = BoardSelection;
-	BallSelectionPrevious = BallSelection;
-
 	//Update
-	CompositorUpdateWindowBitmap(WindowHandle, WindowSurface.Framebuffer);
+	CompositorUpdateWindowBitmap(WindowHandle, WindowSurface.Buffer);
 }
 
-void HidHandler(HidPackage Package)
+void PongHidHandler(HidPackage Package)
 {
 	//Keyboard
 	if(Package.Type == HID_KEYBOARD)
@@ -115,16 +134,24 @@ void HidHandler(HidPackage Package)
 	{
 		//Handle
 		BoardSelection.X = Package.Mouse.MovementX;
+		BoardSelection.X = Limit(BoardSelection.X, FrameSelection.X + 1, FrameSelection.X + FrameSelection.W - BoardSize - 1);
+	}
+}
+
+void PongRoutine()
+{
+	//While Running
+	while(Running)
+	{
+		//Handler
+		PongTimerCallback(0, nullptr);
+
+		//Sleep
+		ApiSleep(250);
 	}
 
-	/*
-	BoardPositionX = Mouse_GetMousePositionX();
-
-	Vga_DrawLine(LastBoardPositionX-5, 180, LastBoardPositionX+5, 180, 0);
-	Vga_DrawLine(BoardPositionX-5, 180, BoardPositionX+5, 180, 63);
-
-	LastBoardPositionX = BoardPositionX;
-	*/
+	//Exit
+	ApiExitProcess();
 }
 
 void Game()
@@ -132,7 +159,7 @@ void Game()
 	//Window Surface
 	WindowSurface =
 	{
-		.Framebuffer = WindowBuffer,
+		.Buffer = WindowBuffer,
 		.BitsPerPixel = 32,
 		.Height = WindowHeight,
 		.Width = WindowWidth
@@ -162,7 +189,7 @@ void Game()
 		.Y = WindowSelection.H - FrameMargin * 3,
 		.X = WindowSelection.W / 2,
 		.H = 3,
-		.W = 20
+		.W = BoardSize
 	};
 
 	//Board Selection Previous
@@ -173,40 +200,39 @@ void Game()
 	{
 		.Y = FrameSelection.Y + FrameMargin,
 		.X = FrameSelection.X + FrameMargin,
-		.H = 5,
-		.W = 5
+		.H = BallSize,
+		.W = BallSize
 	};
 
 	//Ball Selection Previous
 	BallSelectionPrevious = BallSelection;
 
+	//Ball Direction
+	BallDirectionX = 1;
+	BallDirectionY = 1;
+
 	//Window
-	WindowHandle = CompositorCreateWindow((char *) "Pong", (char *) "Pong", 200, 200, WindowSurface.Height, WindowSurface.Width, 255, Normal, 1, 0, HidHandler);
+	WindowHandle = CompositorCreateWindow((char *) "Pong", (char *) "Pong", 200, 200, WindowSurface.Height, WindowSurface.Width, 255, Normal, 1, 0, PongHidHandler);
 
 	//Clear
 	ClearSurface(&WindowSurface, 0xFFEFF4F9);
 
-	//Debug
-	//PrintFormatted("WindowSelection: %d %d %d %d\r\n", WindowSelection.Y, WindowSelection.Y, WindowSelection.H, WindowSelection.W);
-	//PrintFormatted("FrameSelection: %d %d %d %d\r\n", FrameSelection.Y, FrameSelection.Y, FrameSelection.H, FrameSelection.W);
-	//PrintFormatted("BoardSelection: %d %d %d %d\r\n", BoardSelection.Y, BoardSelection.Y, BoardSelection.H, BoardSelection.W);
-	//PrintFormatted("BallSelection: %d %d %d %d\r\n", BallSelection.Y, BallSelection.Y, BallSelection.H, BallSelection.W);
-	//while(1);
-
-	//Frame
+	//Draw Frame + Board + Ball
 	DrawRectangle(&WindowSurface, &FrameSelection, 1, 0xFF7B919F, 0xFFEFF4F9);
-
-	//Board
 	DrawRectangle(&WindowSurface, &BoardSelection, 1, 0xFF7B919F, 0xFF7B919F);
-
-	//Ball
 	DrawRectangle(&WindowSurface, &BallSelection, 1, 0xFF7B919F, 0xFF7B919F);
 
 	//Update
-	CompositorUpdateWindowBitmap(WindowHandle, WindowSurface.Framebuffer);
+	CompositorUpdateWindowBitmap(WindowHandle, WindowSurface.Buffer);
+
+	//Running
+	Running = true;
 
 	//Timer
-	TimerStart(TimerCallback, 250);
+	//TimerStart(PongTimerCallback, 250);
+
+	//Task
+	CreateTask("pong", PongRoutine, false, false, 0);
 }
 
 //-------------------------------------------------------------------------------------------------------------------------//
@@ -220,5 +246,9 @@ void InitializePong()
 
 void DeinitializePong()
 {
-	//
+	//Timer Stop
+	//TimerStop(PongTimerCallback);
+
+	//Running
+	Running = false;
 }

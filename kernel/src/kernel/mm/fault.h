@@ -21,7 +21,7 @@
 //-------------------------------------------------------------------------------------------------------------------------//
 //Prototypes
 
-void PageFaultHandler(RegisterSet *Registers, UInt64 ErrorCode);
+void PageFaultHandler(UInt64 Core, RegisterSet *Registers, UInt64 ErrorCode);
 
 void InitializeFault();
 void DeinitializeFault();

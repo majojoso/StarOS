@@ -22,6 +22,9 @@
 void *ReserveMemory(UInt64 Size);
 bool FreeMemory(void *Address);
 
+void DumpAllocationTableRaw();
+void DumpAllocationTableIntelligent();
+
 void InitializeHeap(void *Address, Int64 Length);
 void DeinitializeHeap();
 

@@ -14,6 +14,7 @@
 #include<include/globals.h>
 
 #include<kernel/io/acpi.h>
+#include<kernel/mm/memory.h>
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Definitions
@@ -31,6 +32,10 @@ struct BootInfo
 {
 	Framebuffer *BootFramebuffer;
 	Rsdp2 *BootRsdp;
+
+	EfiMemoryDescriptor *Map;
+	UInt64 MapSize;
+	UInt64 DescriptorSize;
 };
 
 //-------------------------------------------------------------------------------------------------------------------------//

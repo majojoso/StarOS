@@ -30,7 +30,12 @@ typedef struct
 typedef struct
 {
 	Framebuffer *BootFramebuffer;
+
 	void *BootRsdp;
+
+	EFI_MEMORY_DESCRIPTOR *Map;
+	UINTN MapSize;
+	UINTN DescriptorSize;
 } BootInfo;
 
 //-------------------------------------------------------------------------------------------------------------------------//
@@ -56,6 +61,16 @@ int memcmp(const void *aptr, const void *bptr, size_t n)
 	}
 
 	return 0;
+}
+
+void MemorySet(void *Pointer, char Value, int Count)
+{
+	char *Buffer = (char *) Pointer;
+
+	for(int i = 0; i < Count; i++)
+	{
+		Buffer[i] = Value;
+	}
 }
 
 UINTN strcmp(CHAR8 *a, CHAR8 *b, UINTN length)
@@ -108,26 +123,26 @@ Framebuffer *InitializeGOP()
 void *FindRsdp(EFI_SYSTEM_TABLE *SystemTable)
 {
 	//ACPI RSDP (from SystemTable)
-	EFI_CONFIGURATION_TABLE *configTable = SystemTable->ConfigurationTable;
+	EFI_CONFIGURATION_TABLE *ConfigTable = SystemTable->ConfigurationTable;
 	EFI_GUID Acpi2TableGuid = ACPI_20_TABLE_GUID;
-	void *rsdp = NULL; 
-	
+	void *rsdp = NULL;
+
 	//Loop System Table
 	for(UINTN i = 0; i < SystemTable->NumberOfTableEntries; i++)
 	{
 		//Match GUID
-		if(CompareGuid(&configTable[i].VendorGuid, &Acpi2TableGuid))
+		if(CompareGuid(&ConfigTable[i].VendorGuid, &Acpi2TableGuid))
 		{
 			//Match Signature
-			if(strcmp((CHAR8 *) "RSD PTR ", (CHAR8 *) configTable->VendorTable, 8))
+			if(strcmp((CHAR8 *) "RSD PTR ", (CHAR8 *) ConfigTable->VendorTable, 8))
 			{
 				//Set Pointer
-				rsdp = (void *) configTable->VendorTable;
+				rsdp = (void *) ConfigTable->VendorTable;
 			}
 		}
 
 		//Next
-		configTable++;
+		ConfigTable++;
 	}
 
 	//Result
@@ -160,7 +175,7 @@ void *LoadKernel(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
 	//Load Kernel
 	EFI_FILE *Kernel = LoadFile(NULL, L"kernel.elf", ImageHandle, SystemTable);
-	
+
 	//Debug
 	Print((Kernel != NULL) ? L"Kernel File Load Succeeded\r\n" : L"Kernel File Load Failed\r\n");
 
@@ -214,6 +229,9 @@ void *LoadKernel(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 				Elf64_Addr Segment = ProgramHeader->p_paddr;
 				SystemTable->BootServices->AllocatePages(AllocateAddress, EfiLoaderData, Pages, &Segment);
 
+				//Clear Memory
+				MemorySet((void *) Segment, 0, Pages * 4096);
+
 				//Read Segment
 				Kernel->SetPosition(Kernel, ProgramHeader->p_offset);
 				UINTN SegmentSize = ProgramHeader->p_filesz;
@@ -228,7 +246,7 @@ void *LoadKernel(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 
 	//Debug
 	Print(L"Kernel Loaded\r\n");
-	
+
 	//Kernel Entrypoint
 	return (void *) Header.e_entry;
 }
@@ -254,32 +272,67 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	//Debug
 	Print(L"Framebuffer:\r\n\tBase: 0x%x\r\n\tSize: 0x%x\r\n\tWidth: %d\r\n\tHeight: %d\r\n\tPixelsPerScanline: %d\r\n", FB->BaseAddress, FB->BufferSize, FB->Width, FB->Height, FB->PixelsPerScanLine);
 
-	//EFI Memory
-	EFI_MEMORY_DESCRIPTOR *Map = NULL;
-	UINTN MapSize;
-	UINTN MapKey;
-	UINTN DescriptorSize;
-	UINT32 DescriptorVersion;
-	SystemTable->BootServices->GetMemoryMap(&MapSize, Map, &MapKey, &DescriptorSize, &DescriptorVersion);
-	SystemTable->BootServices->AllocatePool(EfiLoaderData, MapSize, (void **) &Map);
-	SystemTable->BootServices->GetMemoryMap(&MapSize, Map, &MapKey, &DescriptorSize, &DescriptorVersion);
-
 	//ACPI RSDP
-	void *rsdp = FindRsdp(SystemTable);
-	
+	void *RSDP = FindRsdp(SystemTable);
+
 	//Kernel Load + Entrypoint
 	void (*KernelStart)(BootInfo *) = ((__attribute__((sysv_abi)) void (*)(BootInfo *)) LoadKernel(ImageHandle, SystemTable));
+
+	//Debug
+	Print(L"Kernel Launch\r\n");
+
+	//Memory Map
+	EFI_MEMORY_DESCRIPTOR *Map = NULL;
+	UINTN MapSize = 0;
+	UINTN MapKey = 0;
+	UINTN DescriptorSize = 0;
+	UINT32 DescriptorVersion = 0;
+
+	//Status
+	EFI_STATUS StatusAllocate;
+	EFI_STATUS StatusFree;
+	EFI_STATUS StatusMemory;
+	EFI_STATUS StatusExit;
+
+	//Get Memory Map + Exit Boot Services
+	while(TRUE)
+	{
+		//Get Memory Map
+		StatusMemory = SystemTable->BootServices->GetMemoryMap(&MapSize, Map, &MapKey, &DescriptorSize, &DescriptorVersion);
+
+		//Failed (EFI_BUFFER_TOO_SMALL or EFI_INVALID_PARAMETER)
+		if(StatusMemory != EFI_SUCCESS)
+		{
+			//Allocated ?
+			if(Map != NULL)
+			{
+				//Free
+				StatusFree = SystemTable->BootServices->FreePool(Map);
+				StatusFree = StatusFree;
+				Map = NULL;
+			}
+
+			//Allocate
+			StatusAllocate = SystemTable->BootServices->AllocatePool(EfiLoaderData, MapSize + 2 * DescriptorSize, (void **) &Map);
+			StatusAllocate = StatusAllocate;
+
+			//Try Again
+			continue;
+		}
+
+		//Exit Boot Services
+		StatusExit = SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
+		if(StatusExit == EFI_INVALID_PARAMETER) continue;
+		else if(StatusExit == EFI_SUCCESS) break;
+	}
 
 	//Boot Info
 	BootInfo Info;
 	Info.BootFramebuffer = FB;
-	Info.BootRsdp = rsdp;
-
-	//Debug
-	Print(L"Kernel Launch\r\n");
-	
-	//Exit Boot Services
-	SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
+	Info.BootRsdp = RSDP;
+	Info.Map = Map;
+	Info.MapSize = MapSize;
+	Info.DescriptorSize = DescriptorSize;
 
 	//Jump to Kernel Entrypoint
 	KernelStart(&Info);

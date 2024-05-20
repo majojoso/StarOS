@@ -8,8 +8,7 @@
 
 #include<include/globals.h>
 
-//#include<ui/framebuffer.h>
-#include<ui/draw.h>
+#include<ui/framebuffer.h>
 
 #include<kernel/ps/threads.h>
 
@@ -22,6 +21,9 @@
 extern FramebufferBase FramebufferUefi;
 
 void Initialize(UInt64 Core);
+void InitSync();
+void Sync(UInt64 Core);
+void Launch(UInt64 Core);
 
 void TestBsp();
 void TestAp(UInt64 Core);
@@ -39,17 +41,23 @@ void BspMain(BootInfo *InitialBootInfo)
 	//Global BootInfo
 	GlobalBootInfo = InitialBootInfo;
 
-	//Initialize
-	Initialize(0);
+	//Core
+	UInt64 Core = 0;
 
-	//Clear Color
-	ClearSurface(&FramebufferUefi.FrontBuffer, 0x003D97D0); //0x00486D79 0x00232627 0x00F3F3F3 0x003D97D0
+	//Init Sync
+	InitSync();
+
+	//Initialize
+	Initialize(Core);
+
+	//Launch
+	Launch(Core);
 
 	//Test
-	TestBsp();
+	//TestBsp();
 
 	//Idle Hang
-	IdleThreadRoutine(0);
+	IdleThreadRoutine();
 }
 
 void ApMain(UInt64 Core)
@@ -57,11 +65,14 @@ void ApMain(UInt64 Core)
 	//Initialize
 	Initialize(Core);
 
+	//Launch
+	Launch(Core);
+
 	//Test
-	TestAp(Core);
+	//TestAp(Core);
 
 	//Idle Hang
-	IdleThreadRoutine(Core);
+	IdleThreadRoutine();
 }
 
 extern "C" void _start(BootInfo *bootInfo)

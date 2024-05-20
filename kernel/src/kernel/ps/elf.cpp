@@ -81,11 +81,11 @@ void LoadElf(char *Name, void *Image, Task *NewTask, bool Usermode)
 	);*/
 
 	//Map All (TODO: Hardcoded)
-	//MapAddressRange(NewTask->PagingPointer, GB(4), GB(4) + MB(1), true, false, true);
+	//VmmMapAddressRange(NewTask->PagingPointer, GB(4), GB(4) + MB(1), true, false, true);
 	//WriteCR3(NewTask->PagingPointer.Value);
 
 	//Debug
-	PrintFormatted("  Program Headers\r\n");
+	LogFormatted("  Program Headers\r\n");
 
 	//Loop Program Headers
 	for(int i = 0; i < Header->PhEntryCount; i++, ProgramHeader++)
@@ -101,13 +101,15 @@ void LoadElf(char *Name, void *Image, Task *NewTask, bool Usermode)
 		//TODO: Check if Address belongs to process and does not overwrite kernel memory
 
 		//Debug
-		PrintFormatted("    Section(%d): %H + %H => %H (%H/%H) [%H]\r\n", ProgramHeader->SegmentType, (char *) Image, ProgramHeader->PhysicalAddress, ProgramHeader->VirtualAddress, ProgramHeader->FileSize, ProgramHeader->MemorySize, Header->Entrypoint);
+		LogFormatted("    Section(%d): %H + %H => %H (%H/%H) [%H]\r\n", ProgramHeader->SegmentType, (char *) Image, ProgramHeader->PhysicalAddress, ProgramHeader->VirtualAddress, ProgramHeader->FileSize, ProgramHeader->MemorySize, Header->Entrypoint);
 
 		//Test Artificial
 		//Destination = (void *) MB(24);
 
 		//Map Code
-		MapAddressRange(NewTask->PagingPointer, GB(5), GB(5) + KB(16), true, false, Usermode);
+		NewTask->CodeBegin = GB(5);
+		NewTask->CodeEnd = NewTask->CodeBegin + KB(16);
+		VmmMapAddressRange(NewTask->PagingPointer, NewTask->CodeBegin, NewTask->CodeEnd, true, false, Usermode);
 
 		//Clear + Copy
 		MemorySet(Destination, 0, ProgramHeader->MemorySize);
@@ -119,10 +121,11 @@ void LoadElf(char *Name, void *Image, Task *NewTask, bool Usermode)
 	//RegisterSet *Registers = (RegisterSet *) (NewTask->Threads->GetFirstElement()->Data->KernelStack - sizeof(RegisterSet)); //NEW
 
 	//Set Entrypoint (TODO: Extra function)
-	Registers->rip = Header->Entrypoint;
+	NewTask->CodePointer = Header->Entrypoint;
+	Registers->rip = NewTask->CodePointer;
 
 	//Test Local
-	//void (*Program)() = (void (*)()) Header->Entrypoint;
+	//void (*Program)() = (void (*)()) NewTask->CodePointer;
 	//Program();
 }
 

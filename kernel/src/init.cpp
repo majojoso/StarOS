@@ -12,9 +12,17 @@
 
 #include<kernel/base/stack.h>
 #include<kernel/base/heap.h>
+#include<kernel/base/panic.h>
 
 //#include<ui/framebuffer.h>
 #include<ui/draw.h>
+#include<ui/image.h>
+
+#include<kernel/mm/memory.h>
+#include<kernel/mm/paging.h>
+#include<kernel/mm/pmm.h>
+#include<kernel/mm/vmm.h>
+#include<kernel/mm/fault.h>
 
 #include<kernel/cpu/cpuid.h>
 #include<kernel/cpu/gdt.h>
@@ -22,11 +30,6 @@
 
 #include<kernel/io/acpi.h>
 #include<kernel/io/pci.h>
-
-#include<kernel/mm/paging.h>
-#include<kernel/mm/pmm.h>
-#include<kernel/mm/vmm.h>
-#include<kernel/mm/fault.h>
 
 #include<kernel/int/gen/interrupts.h>
 #include<kernel/int/gen/registers.h>
@@ -48,6 +51,7 @@
 #include<kernel/int/types/ipi.h>
 
 #include<kernel/smp/smp.h>
+#include<kernel/smp/spinlock.h>
 #include<kernel/smp/trampoline.h>
 
 #include<kernel/ps/threads.h>
@@ -69,11 +73,11 @@
 #include<drivers/gpt.h>
 #include<drivers/vfat.h>
 
+#include<ui/bootcon.h>
 #include<ui/font.h>
+#include<ui/image.h>
+#include<ui/logo.h>
 #include<ui/compositor.h>
-
-#include<apps/pong.h>
-#include<apps/tetris.h>
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Information
@@ -89,26 +93,26 @@ extern FramebufferBase FramebufferUefi;
 #define MACHINIT(Name, ...) \
 if(Core == 0) \
 { \
-	if(DebugReady) PrintFormatted("[INIT] Initialize %s...\r\n", #Name); \
+	if(DebugReady) LogFormatted("[INIT] Initialize %s...\r\n", #Name); \
 	Initialize ## Name(__VA_ARGS__); \
 }
 
 #define MACHDEINIT(Name, ...) \
 if(Core == 0) \
 { \
-	if(DebugReady) PrintFormatted("[INIT] Deinitialize %s...\r\n", #Name); \
+	if(DebugReady) LogFormatted("[INIT] Deinitialize %s...\r\n", #Name); \
 	Deinitialize ## Name(__VA_ARGS__); \
 }
 
 #define COREINIT(Name) \
 { \
-	if(DebugReady && Core == 0) PrintFormatted("[INIT] Core %d: Initialize %s...\r\n", Core, #Name); \
+	if(DebugReady && Core == 0) LogFormatted("[INIT] Core %d: Initialize %s...\r\n", Core, #Name); \
 	InitializeCore ## Name(Core); \
 }
 
 #define COREDEINIT(Name) \
 { \
-	if(DebugReady && Core == 0) PrintFormatted("[INIT] Core %d: Deinitialize %s...\r\n", Core, #Name); \
+	if(DebugReady && Core == 0) LogFormatted("[INIT] Core %d: Deinitialize %s...\r\n", Core, #Name); \
 	DeinitializeCore ## Name(Core); \
 }
 
@@ -137,20 +141,26 @@ void Initialize(UInt64 Core)
 	//Framebuffer
 	MACHINIT(Framebuffer)
 	MACHINIT(Serial)
+	MACHDO LoadSystemFont(true);
+	MACHINIT(BootConsole)
 	MACHDO DebugReady = true;
 
 	//Greet
 	MACHDO
 	{
-		PrintFormatted("\r\n");
-		PrintFormatted("===============================\r\n");
-		PrintFormatted("== StarOS Kernel\r\n");
-		PrintFormatted("===============================\r\n");
-		PrintFormatted("\r\n");
+		LogFormatted("\r\n");
+		LogFormatted("===============================\r\n");
+		LogFormatted("== StarOS Kernel Init\r\n");
+		LogFormatted("===============================\r\n");
+		LogFormatted("\r\n");
 	}
 
+	//Log
+	MACHDO LogFormatted("[INIT] Initializing...\r\n");
+
 	//Memory Manager
-	MACHINIT(Pmm)
+	MACHINIT(Memory)
+	MACHINIT(Pmm, GB(2), MB(200), MB(300)) //TODO: Hardcode
 	MACHINIT(Vmm)
 	MACHINIT(Paging)
 	COREINIT(Paging)
@@ -167,42 +177,48 @@ void Initialize(UInt64 Core)
 	MACHINIT(Acpi)
 	MACHINIT(Pci)
 
-	//Interrupts
+	//Interrupts General
+	MACHINIT(Interrupts)
 	MACHINIT(Idt)
 	COREINIT(Idt)
+
+	//Interrupts Types
 	MACHINIT(Exceptions)
 	MACHINIT(Irq)
 	MACHINIT(Ipi)
 	MACHINIT(Sint)
+
+	//Interrupts Controller
 	MACHINIT(Pic)
-	#ifdef USE_APIC
+	#if USE_APIC == 1
 	MACHDEINIT(Pic)
+	MACHINIT(Spinlock)
 	MACHINIT(Smp)
 	COREINIT(LocalApic)
 	MACHINIT(IoApic)
-	#else
-	MACHINIT(Pit)
 	#endif
-	MACHINIT(Interrupts)
 
-	//Interrupts Highlevel
+	//Interrupts API
 	MACHINIT(Handler)
 	MACHINIT(Timer)
 
-	//SMP
-	#ifdef USE_APIC
-	MACHINIT(Trampoline)
+	//Interval Timer
+	#if USE_APIC == 1
 	MACHINIT(Apit)
+	#else
+	MACHINIT(Pit)
 	#endif
 
-	//Devices
-	MACHDO ScanPciBus();
+	//SMP
+	#if USE_APIC == 1 && USE_SMP == 1
+	MACHINIT(Trampoline)
+	#endif
 
-	//Storage
-	MACHINIT(Gpt)
-	MACHINIT(Vfat)
+	//Interval Timer
+	#if USE_APIC == 1
+	COREINIT(Apit)
+	#endif
 
-	#if 1
 	//PS
 	MACHINIT(Threads)
 	MACHINIT(Tasks)
@@ -214,17 +230,6 @@ void Initialize(UInt64 Core)
 	//API
 	MACHINIT(Apis)
 
-//while(true) asm("hlt");
-
-	//Threads
-	void TestThread();
-	//MACHDO CreateTask(1, "test1", TestThread);
-	//MACHDO CreateTask(2, "test2", TestThread);
-	//MACHDO CreateTask(3, "test3", TestThread);
-	MACHDO LoadProcess("test1", "test.elf", false);
-	MACHDO LoadProcess("test2", "test.elf", true);
-	MACHDO LoadProcess("test3", "test.elf", true);
-
 	//Drivers
 	MACHINIT(Keyboard)
 	MACHINIT(Mouse)
@@ -234,46 +239,22 @@ void Initialize(UInt64 Core)
 	MACHINIT(Clock)
 	MACHINIT(Ahci)
 
+	//Devices
+	MACHDO ScanPciBus();
+
+	//Storage
+	MACHINIT(Gpt)
+	MACHINIT(Vfat)
+
 	//UI
-	MACHDO ClearSurface(&FramebufferUefi.FrontBuffer, 0x003D97D0); //0x00486D79 0x00232627 0x00F3F3F3 0x003D97D0
 	MACHINIT(Draw)
 	MACHINIT(Font)
-	MACHINIT(Compositor)
+	MACHINIT(Image)
+	MACHINIT(Logo)
 
-	//UI Windows
-	MACHDO CompositorCreateWindow((char *) "Window 1", (char *) "Test Window 1", 100, 100, 200, 300, 255, Normal, 1, 0, nullptr);
-	MACHDO CompositorCreateWindow((char *) "Window 2", (char *) "Test Window 2", 150, 150, 200, 300, 255, Normal, 1, 0, nullptr);
-	//MACHDO CompositorCreateWindow((char *) "Window 3", (char *) "Test Window 3", 200, 200, 200, 300, 255, Normal, 1, 0, nullptr);
-	//MACHDO CompositorCreateWindow((char *) "Window 4", (char *) "Test Window 4", 250, 250, 200, 300, 255, Normal, 1, 0, nullptr);
-	//MACHDO CompositorCreateWindow((char *) "Window 5", (char *) "Test Window 5", 300, 300, 200, 300, 255, Normal, 1, 0, nullptr);
+	//Log
+	MACHDO LogFormatted("[INIT] Done\r\n");
 
-	//Apps
-	MACHINIT(Pong)
-	MACHINIT(Tetris)
-
-	//Debug Begin
-	#ifdef DEBUG_INIT
-	MACHDO ClearSurface(&FramebufferUefi.FrontBuffer, 0x003D97D0); //0x00486D79 0x00232627 0x00F3F3F3 0x003D97D0
-	#endif
-
-	//Debug End
-	#ifdef DEBUG_INIT
-	MACHDO asm("cli;hlt");
-	#endif
-
-	//Enable Interrupts
-	COREDO InterruptsActive(true);
-
-	//Idle
-	MACHDO InterruptsActive(true);
-	MACHDO SchedulerRun();
-	MACHDO IdleThreadRoutine(Core);
-	#endif
-
-	//Test IPI
-	//MACHDO
-	//{
-	//	for(int i = 0; i < 20000000; i++) asm("nop");
-	//	SendTestIpi();
-	//}
+	//Terminate Boot Console
+	MACHDEINIT(BootConsole)
 }

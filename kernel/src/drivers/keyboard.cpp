@@ -13,6 +13,7 @@
 #include<kernel/io/ports.h>
 
 #include<kernel/int/api/handler.h>
+#include<kernel/int/apic/ioapic.h>
 
 #include<drivers/hid.h>
 
@@ -340,21 +341,21 @@ bool IsNumlock(UInt8 Scancode)
 
 void ReportKeystroke(Keystroke Stroke)
 {
-	//Log
-	//PrintFormatted("(0x%x => %s @%d%d%d%d%d%d%d) ", Stroke->Scancode, Stroke->Key, Stroke->ControlKeys.Control, Stroke->ControlKeys.Shift, Stroke->ControlKeys.Winkey, Stroke->ControlKeys.Alt, Stroke->ControlKeys.AltGr, Stroke->ControlKeys.Capslock, Stroke->ControlKeys.Numlock);
-	//PrintFormatted("%s", Stroke.Key);
+	//LogFormatted
+	//LogFormatted("(0x%x => %s @%d%d%d%d%d%d%d) ", Stroke->Scancode, Stroke->Key, Stroke->ControlKeys.Control, Stroke->ControlKeys.Shift, Stroke->ControlKeys.Winkey, Stroke->ControlKeys.Alt, Stroke->ControlKeys.AltGr, Stroke->ControlKeys.Capslock, Stroke->ControlKeys.Numlock);
+	//LogFormatted("%s", Stroke.Key);
 
 	//Report
 	HidAddKeyboardEvent(Stroke);
 }
 
-void KeyboardHandler(RegisterSet *Registers)
+void KeyboardHandler(UInt64 Core, RegisterSet *Registers)
 {
 	//Scancode
 	UInt8 Scancode = PortReadU8(KBD_DAT);
 
-	//Log
-	//PrintFormatted("(0x%x) ", Scancode);
+	//LogFormatted
+	//LogFormatted("(0x%x) ", Scancode);
 	//return;
 
 	//Handle Extended
@@ -419,8 +420,8 @@ void KeyboardHandler(RegisterSet *Registers)
 	//Handle Other Keys Released
 	else
 	{
-		//Log
-		//PrintFormatted("(0x%x => RELEASE) ", Scancode);
+		//LogFormatted
+		//LogFormatted("(0x%x => RELEASE) ", Scancode);
 	}
 }
 
@@ -430,6 +431,8 @@ void KeyboardHandler(RegisterSet *Registers)
 void InitializeKeyboard()
 {
 	IrqInstallHandler(1, KeyboardHandler);
+
+	IoapicRedirectIsaInterrupt(1, 1, 0);
 }
 
 void DeinitializeKeyboard()

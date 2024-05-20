@@ -21,7 +21,7 @@
 
 struct TimerHandler
 {
-	void (*Handler)(RegisterSet *Registers);
+	void (*Handler)(UInt64 Core, RegisterSet *Registers);
 	UInt64 Interval;
 	UInt64 Counter;
 };
@@ -33,8 +33,8 @@ UInt64 TimerGetTicks();
 
 void TimerWait(UInt64 TickCount);
 
-void TimerStart(void (*Handler)(RegisterSet *Registers), UInt64 Interval);
-bool TimerStop(void (*Handler)(RegisterSet *Registers));
+void TimerStart(void (*Handler)(UInt64 Core, RegisterSet *Registers), UInt64 Interval);
+bool TimerStop(void (*Handler)(UInt64 Core, RegisterSet *Registers));
 
 void InitializeTimer();
 void DeinitializeTimer();

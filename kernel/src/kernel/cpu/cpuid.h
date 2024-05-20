@@ -34,9 +34,11 @@ UInt32 CpuidGetModel();
 
 bool CpuidCheckFlagEdx(UInt32 Flag);
 bool CpuidCheckFlagEcx(UInt32 Flag);
-bool CpuidCheckApic();
 
+bool CpuidCheckApic();
 bool CpuidHasMsr();
+UInt8 CpuidGetLapicId();
+
 void CpuidReadMsrRaw(UInt32 MSR, UInt32 *EAX, UInt32 *EDX);
 void CpuidWriteMsrRaw(UInt32 MSR, UInt32 EAX, UInt32 EDX);
 UInt64 CpuidReadMsr(UInt32 MSR);
@@ -53,6 +55,9 @@ void CpuWriteCR2(UInt64 Value);
 void CpuWriteCR3(UInt64 Value);
 void CpuWriteCR4(UInt64 Value);
 void CpuWriteCR8(UInt64 Value);
+
+void FxSave(void *Buffer);
+void FxLoad(void *Buffer);
 
 UInt64 GetCpuTicks();
 

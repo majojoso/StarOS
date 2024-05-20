@@ -48,7 +48,7 @@ CR3 InitializeMapping()
 	Root.Value = 0x0000000000000000;
 	Root.CacheDisable = 0;
 	Root.WriteThrough = 1;
-	Root.Base = EasyReservePageFrame();
+	Root.Base = PmmReserve(1);
 
 	//Clear PML4
 	MemorySet((void *) (Root.Base * PAGEFRAME_SIZE), 0, PAGEFRAME_SIZE);
@@ -57,7 +57,7 @@ CR3 InitializeMapping()
 	return Root;
 }
 
-bool MapAddressFromPhysical(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bool Writeable, bool NoExecute, bool Usermode, bool Device)
+bool VmmMapAddressFromPhysical(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bool Writeable, bool NoExecute, bool Usermode, bool Device)
 {
 	//Partition Virtual Address
 	VirtualAddress VA;
@@ -69,7 +69,7 @@ bool MapAddressFromPhysical(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bool W
 	UInt64 PhysicalPage = PA.Pageframe;
 
 	//Debug
-	//PrintFormatted("    Map: %d = %d(%d:%d:%d:%d:%d)-%d\r\n", VA.Value, VA.Page, VA.IndexL5, VA.IndexL4, VA.IndexL3, VA.IndexL2, VA.IndexL1, VA.Offset);
+	//LogFormatted("    Map: %d = %d(%d:%d:%d:%d:%d)-%d\r\n", VA.Value, VA.Page, VA.IndexL5, VA.IndexL4, VA.IndexL3, VA.IndexL2, VA.IndexL1, VA.Offset);
 
 	//Walk Mapping Levels
 
@@ -78,7 +78,7 @@ bool MapAddressFromPhysical(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bool W
 	if(!PML4[VA.IndexL4].L4.Present)
 	{
 		//Reserve + Present
-		PML4[VA.IndexL4].L4.Index     = EasyReservePageFrame();
+		PML4[VA.IndexL4].L4.Index     = PmmReserve(1);
 		PML4[VA.IndexL4].L4.Present   = 1;
 
 		//Parameters
@@ -90,7 +90,7 @@ bool MapAddressFromPhysical(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bool W
 		MemorySet((void *) (PML4[VA.IndexL4].L4.Index * PAGEFRAME_SIZE), 0, PAGEFRAME_SIZE);
 
 		//Debug
-		//PrintFormatted("      Create: PML4 Entry = PML3 Table (%d)\r\n", PML4[VA.IndexL4].L4.Index);
+		//LogFormatted("      Create: PML4 Entry = PML3 Table (%d)\r\n", PML4[VA.IndexL4].L4.Index);
 	}
 
 	//PML3
@@ -98,7 +98,7 @@ bool MapAddressFromPhysical(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bool W
 	if(!PML3[VA.IndexL3].L3.Present)
 	{
 		//Reserve + Present
-		PML3[VA.IndexL3].L3.Index     = EasyReservePageFrame();
+		PML3[VA.IndexL3].L3.Index     = PmmReserve(1);
 		PML3[VA.IndexL3].L3.Present   = 1;
 
 		//Parameters
@@ -110,7 +110,7 @@ bool MapAddressFromPhysical(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bool W
 		MemorySet((void *) (PML3[VA.IndexL3].L3.Index * PAGEFRAME_SIZE), 0, PAGEFRAME_SIZE);
 
 		//Debug
-		//PrintFormatted("      Create: PML3 Entry = PML2 Table (%d)\r\n", PML3[VA.IndexL3].L3.Index);
+		//LogFormatted("      Create: PML3 Entry = PML2 Table (%d)\r\n", PML3[VA.IndexL3].L3.Index);
 	}
 
 	//PML2
@@ -118,7 +118,7 @@ bool MapAddressFromPhysical(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bool W
 	if(!PML2[VA.IndexL2].L2.Present)
 	{
 		//Reserve + Present
-		PML2[VA.IndexL2].L2.Index     = EasyReservePageFrame();
+		PML2[VA.IndexL2].L2.Index     = PmmReserve(1);
 		PML2[VA.IndexL2].L2.Present   = 1;
 
 		//Parameters
@@ -130,7 +130,7 @@ bool MapAddressFromPhysical(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bool W
 		MemorySet((void *) (PML2[VA.IndexL2].L2.Index * PAGEFRAME_SIZE), 0, PAGEFRAME_SIZE);
 
 		//Debug
-		//PrintFormatted("      Create: PML2 Entry = PML1 Table (%d)\r\n", PML2[VA.IndexL2].L2.Index);
+		//LogFormatted("      Create: PML2 Entry = PML1 Table (%d)\r\n", PML2[VA.IndexL2].L2.Index);
 	}
 
 	//PML1
@@ -153,7 +153,7 @@ bool MapAddressFromPhysical(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bool W
 		//MemorySet((void *) (PML1[VA.IndexL1].L1.Index * PAGEFRAME_SIZE), 0, PAGEFRAME_SIZE);
 
 		//Debug
-		//PrintFormatted("      Create: PML1 Entry = Page (%d)\r\n", PML1[VA.IndexL1].L1.Index);
+		//LogFormatted("      Create: PML1 Entry = Page (%d)\r\n", PML1[VA.IndexL1].L1.Index);
 	}
 
 	//Flush TLB
@@ -164,7 +164,7 @@ bool MapAddressFromPhysical(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bool W
 	return true;
 }
 
-bool MapAddressFromPhysicalRange(CR3 Mapping, UInt64 VirtualFrom, UInt64 VirtualTo, UInt64 Physical, bool Writeable, bool NoExecute, bool Usermode)
+bool VmmMapAddressFromPhysicalRange(CR3 Mapping, UInt64 VirtualFrom, UInt64 VirtualTo, UInt64 Physical, bool Writeable, bool NoExecute, bool Usermode)
 {
 	//Partition Address Virtual From
 	VirtualAddress VaFrom;
@@ -187,17 +187,17 @@ bool MapAddressFromPhysicalRange(CR3 Mapping, UInt64 VirtualFrom, UInt64 Virtual
 	PaFrom.Offset = 0;
 
 	//Debug
-	//PrintFormatted("Map Pages Phys: %d(@%d) -> %d(@%d)\r\n", VaFrom.Page, VaFrom.Value, VaTo.Page, VaTo.Value);
+	//LogFormatted("Map Pages Phys: %d(@%d) -> %d(@%d)\r\n", VaFrom.Page, VaFrom.Value, VaTo.Page, VaTo.Value);
 
 	//Loop Pages
 	bool Success = true;
 	while(VaFrom.Page < VaTo.Page)
 	{
 		//Debug
-		//PrintFormatted("  Map Page Phys: %d(@%d) -> %d\r\n", VaFrom.Page, VaFrom.Value, PaFrom.Value);
+		//LogFormatted("  Map Page Phys: %d(@%d) -> %d\r\n", VaFrom.Page, VaFrom.Value, PaFrom.Value);
 
 		//Map
-		Success = Success && MapAddressFromPhysical(Mapping, VaFrom.Value, PaFrom.Value, Writeable, NoExecute, Usermode);
+		Success = Success && VmmMapAddressFromPhysical(Mapping, VaFrom.Value, PaFrom.Value, Writeable, NoExecute, Usermode);
 
 		//Count
 		VaFrom.Page++;
@@ -208,7 +208,7 @@ bool MapAddressFromPhysicalRange(CR3 Mapping, UInt64 VirtualFrom, UInt64 Virtual
 	return Success;
 }
 
-bool MapAddressFromPhysicalHuge(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bool Writeable, bool NoExecute, bool Usermode)
+bool VmmMapAddressFromPhysicalHuge(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bool Writeable, bool NoExecute, bool Usermode)
 {
 	//Partition Virtual Address
 	VirtualAddress VA;
@@ -220,7 +220,7 @@ bool MapAddressFromPhysicalHuge(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bo
 	UInt64 PhysicalPage = PA.Pageframe;
 
 	//Debug
-	//PrintFormatted("    Map: %d = %d(%d:%d:%d:%d:%d)-%d\r\n", VA.Value, VA.Page, VA.IndexL5, VA.IndexL4, VA.IndexL3, VA.IndexL2, VA.IndexL1, VA.Offset);
+	//LogFormatted("    Map: %d = %d(%d:%d:%d:%d:%d)-%d\r\n", VA.Value, VA.Page, VA.IndexL5, VA.IndexL4, VA.IndexL3, VA.IndexL2, VA.IndexL1, VA.Offset);
 
 	//Walk Mapping Levels
 
@@ -229,7 +229,7 @@ bool MapAddressFromPhysicalHuge(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bo
 	if(!PML4[VA.IndexL4].L4.Present)
 	{
 		//Reserve + Present
-		PML4[VA.IndexL4].L4.Index        = EasyReservePageFrame();
+		PML4[VA.IndexL4].L4.Index        = PmmReserve(1);
 		PML4[VA.IndexL4].L4.Present      = 1;
 
 		//Parameters
@@ -248,7 +248,7 @@ bool MapAddressFromPhysicalHuge(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bo
 		MemorySet((void *) (PML4[VA.IndexL4].L4.Index * PAGEFRAME_SIZE), 0, PAGEFRAME_SIZE);
 
 		//Debug
-		//PrintFormatted("      Create: PML4 Entry = PML3 Table (%d)\r\n", PML4[VA.IndexL4].L4.Index);
+		//LogFormatted("      Create: PML4 Entry = PML3 Table (%d)\r\n", PML4[VA.IndexL4].L4.Index);
 	}
 
 	//PML3
@@ -278,7 +278,7 @@ bool MapAddressFromPhysicalHuge(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bo
 		//MemorySet((void *) (PML3[VA.IndexL3].L3.Index * PAGEFRAME_SIZE), 0, PAGEFRAME_SIZE);
 
 		//Debug
-		//PrintFormatted("      Create: PML3 Entry = Page (%d)\r\n", PML3[VA.IndexL3].L3.Index);
+		//LogFormatted("      Create: PML3 Entry = Page (%d)\r\n", PML3[VA.IndexL3].L3.Index);
 	}
 
 	//Flush TLB
@@ -289,7 +289,7 @@ bool MapAddressFromPhysicalHuge(CR3 Mapping, UInt64 Virtual, UInt64 Physical, bo
 	return true;
 }
 
-bool MapAddressFromPhysicalHugeRange(CR3 Mapping, UInt64 VirtualFrom, UInt64 VirtualTo, UInt64 Physical, bool Writeable, bool NoExecute, bool Usermode)
+bool VmmMapAddressFromPhysicalHugeRange(CR3 Mapping, UInt64 VirtualFrom, UInt64 VirtualTo, UInt64 Physical, bool Writeable, bool NoExecute, bool Usermode)
 {
 	//Partition Address Virtual From
 	VirtualAddress VaFrom;
@@ -312,17 +312,17 @@ bool MapAddressFromPhysicalHugeRange(CR3 Mapping, UInt64 VirtualFrom, UInt64 Vir
 	PaFrom.Offset = 0;
 
 	//Debug
-	//PrintFormatted("Map Pages Phys: %d(@%d) -> %d(@%d)\r\n", VaFrom.Page, VaFrom.Value, VaTo.Page, VaTo.Value);
+	//LogFormatted("Map Pages Phys: %d(@%d) -> %d(@%d)\r\n", VaFrom.Page, VaFrom.Value, VaTo.Page, VaTo.Value);
 
 	//Loop Pages
 	bool Success = true;
 	while(VaFrom.Page < VaTo.Page)
 	{
 		//Debug
-		//PrintFormatted("  Map Page Phys: %d(@%d) -> %d\r\n", VaFrom.Page, VaFrom.Value, PaFrom.Value);
+		//LogFormatted("  Map Page Phys: %d(@%d) -> %d\r\n", VaFrom.Page, VaFrom.Value, PaFrom.Value);
 
 		//Map
-		Success = Success && MapAddressFromPhysicalHuge(Mapping, VaFrom.Value, PaFrom.Value, Writeable, NoExecute, Usermode);
+		Success = Success && VmmMapAddressFromPhysicalHuge(Mapping, VaFrom.Value, PaFrom.Value, Writeable, NoExecute, Usermode);
 
 		//Count
 		VaFrom.Page += (MAPPING_ENTRY_COUNT * MAPPING_ENTRY_COUNT);
@@ -333,14 +333,14 @@ bool MapAddressFromPhysicalHugeRange(CR3 Mapping, UInt64 VirtualFrom, UInt64 Vir
 	return Success;
 }
 
-bool MapAddress(CR3 Mapping, UInt64 Virtual, bool Writeable, bool NoExecute, bool Usermode)
+bool VmmMapAddress(CR3 Mapping, UInt64 Virtual, bool Writeable, bool NoExecute, bool Usermode)
 {
 	//Partition Virtual Address
 	VirtualAddress VA;
 	VA.Value = Virtual;
 
 	//Debug
-	//PrintFormatted("    Map: %d = %d(%d:%d:%d:%d:%d)-%d\r\n", VA.Value, VA.Page, VA.IndexL5, VA.IndexL4, VA.IndexL3, VA.IndexL2, VA.IndexL1, VA.Offset);
+	//LogFormatted("    Map: %d = %d(%d:%d:%d:%d:%d)-%d\r\n", VA.Value, VA.Page, VA.IndexL5, VA.IndexL4, VA.IndexL3, VA.IndexL2, VA.IndexL1, VA.Offset);
 
 	//Walk Mapping Levels
 
@@ -349,7 +349,7 @@ bool MapAddress(CR3 Mapping, UInt64 Virtual, bool Writeable, bool NoExecute, boo
 	if(!PML4[VA.IndexL4].L4.Present)
 	{
 		//Reserve + Present
-		PML4[VA.IndexL4].L4.Index     = EasyReservePageFrame();
+		PML4[VA.IndexL4].L4.Index     = PmmReserve(1);
 		PML4[VA.IndexL4].L4.Present   = 1;
 
 		//Parameters
@@ -361,7 +361,7 @@ bool MapAddress(CR3 Mapping, UInt64 Virtual, bool Writeable, bool NoExecute, boo
 		MemorySet((void *) (PML4[VA.IndexL4].L4.Index * PAGEFRAME_SIZE), 0, PAGEFRAME_SIZE);
 
 		//Debug
-		//PrintFormatted("      Create: PML4 Entry = PML3 Table (%d)\r\n", PML4[VA.IndexL4].L4.Index);
+		//LogFormatted("      Create: PML4 Entry = PML3 Table (%d)\r\n", PML4[VA.IndexL4].L4.Index);
 	}
 
 	//PML3
@@ -369,7 +369,7 @@ bool MapAddress(CR3 Mapping, UInt64 Virtual, bool Writeable, bool NoExecute, boo
 	if(!PML3[VA.IndexL3].L3.Present)
 	{
 		//Reserve + Present
-		PML3[VA.IndexL3].L3.Index     = EasyReservePageFrame();
+		PML3[VA.IndexL3].L3.Index     = PmmReserve(1);
 		PML3[VA.IndexL3].L3.Present   = 1;
 
 		//Parameters
@@ -381,7 +381,7 @@ bool MapAddress(CR3 Mapping, UInt64 Virtual, bool Writeable, bool NoExecute, boo
 		MemorySet((void *) (PML3[VA.IndexL3].L3.Index * PAGEFRAME_SIZE), 0, PAGEFRAME_SIZE);
 
 		//Debug
-		//PrintFormatted("      Create: PML3 Entry = PML2 Table (%d)\r\n", PML3[VA.IndexL3].L3.Index);
+		//LogFormatted("      Create: PML3 Entry = PML2 Table (%d)\r\n", PML3[VA.IndexL3].L3.Index);
 	}
 
 	//PML2
@@ -389,7 +389,7 @@ bool MapAddress(CR3 Mapping, UInt64 Virtual, bool Writeable, bool NoExecute, boo
 	if(!PML2[VA.IndexL2].L2.Present)
 	{
 		//Reserve + Present
-		PML2[VA.IndexL2].L2.Index     = EasyReservePageFrame();
+		PML2[VA.IndexL2].L2.Index     = PmmReserve(1);
 		PML2[VA.IndexL2].L2.Present   = 1;
 
 		//Parameters
@@ -401,7 +401,7 @@ bool MapAddress(CR3 Mapping, UInt64 Virtual, bool Writeable, bool NoExecute, boo
 		MemorySet((void *) (PML2[VA.IndexL2].L2.Index * PAGEFRAME_SIZE), 0, PAGEFRAME_SIZE);
 
 		//Debug
-		//PrintFormatted("      Create: PML2 Entry = PML1 Table (%d)\r\n", PML2[VA.IndexL2].L2.Index);
+		//LogFormatted("      Create: PML2 Entry = PML1 Table (%d)\r\n", PML2[VA.IndexL2].L2.Index);
 	}
 
 	//PML1
@@ -409,7 +409,7 @@ bool MapAddress(CR3 Mapping, UInt64 Virtual, bool Writeable, bool NoExecute, boo
 	if(!PML1[VA.IndexL1].L1.Present)
 	{
 		//Reserve + Present
-		PML1[VA.IndexL1].L1.Index     = EasyReservePageFrame();
+		PML1[VA.IndexL1].L1.Index     = PmmReserve(1);
 		PML1[VA.IndexL1].L1.Present   = 1;
 
 		//Parameters
@@ -421,7 +421,7 @@ bool MapAddress(CR3 Mapping, UInt64 Virtual, bool Writeable, bool NoExecute, boo
 		//MemorySet((void *) (PML1[VA.IndexL1].L1.Index * PAGEFRAME_SIZE), 0, PAGEFRAME_SIZE);
 
 		//Debug
-		//PrintFormatted("      Create: PML1 Entry = Page (%d)\r\n", PML1[VA.IndexL1].L1.Index);
+		//LogFormatted("      Create: PML1 Entry = Page (%d)\r\n", PML1[VA.IndexL1].L1.Index);
 	}
 
 	//Flush TLB
@@ -432,7 +432,7 @@ bool MapAddress(CR3 Mapping, UInt64 Virtual, bool Writeable, bool NoExecute, boo
 	return true;
 }
 
-bool MapAddressRange(CR3 Mapping, UInt64 VirtualFrom, UInt64 VirtualTo, bool Writeable, bool NoExecute, bool Usermode)
+bool VmmMapAddressRange(CR3 Mapping, UInt64 VirtualFrom, UInt64 VirtualTo, bool Writeable, bool NoExecute, bool Usermode)
 {
 	//Partition Address Virtual From
 	VirtualAddress VaFrom;
@@ -450,17 +450,17 @@ bool MapAddressRange(CR3 Mapping, UInt64 VirtualFrom, UInt64 VirtualTo, bool Wri
 	if(VaFrom.Page == VaTo.Page) VaTo.Page = VaFrom.Page + 1;
 
 	//Debug
-	//PrintFormatted("Map Pages: %d(@%d) -> %d(@%d)\r\n", VaFrom.Page, VaFrom.Value, VaTo.Page, VaTo.Value);
+	//LogFormatted("Map Pages: %d(@%d) -> %d(@%d)\r\n", VaFrom.Page, VaFrom.Value, VaTo.Page, VaTo.Value);
 
 	//Loop Pages
 	bool Success = true;
 	while(VaFrom.Page < VaTo.Page)
 	{
 		//Debug
-		//PrintFormatted("  Map Page: %d(@%d)\r\n", VaFrom.Page, VaFrom.Value);
+		//LogFormatted("  Map Page: %d(@%d)\r\n", VaFrom.Page, VaFrom.Value);
 
 		//Map
-		Success = Success && MapAddress(Mapping, VaFrom.Value, Writeable, NoExecute, Usermode);
+		Success = Success && VmmMapAddress(Mapping, VaFrom.Value, Writeable, NoExecute, Usermode);
 
 		//Count
 		VaFrom.Page++;

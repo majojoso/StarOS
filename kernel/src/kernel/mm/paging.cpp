@@ -56,7 +56,7 @@ UInt64 IdentityAddPhysical(UInt64 Physical, bool Writeable, bool NoExecute, bool
 	UInt64 Address = GB(4) + AddMappingCounter * PAGEFRAME_SIZE;
 	AddMappingCounter++;
 
-	bool Result = MapAddressFromPhysical(KernelCr3[0], Address, Physical, Writeable, NoExecute, Usermode, true);
+	bool Result = VmmMapAddressFromPhysical(KernelCr3[0], Address, Physical, Writeable, NoExecute, Usermode, true);
 	return Address;
 }
 
@@ -77,11 +77,11 @@ void TrySolveProblems()
 	//Disable CR4 SMAP + PKE
 	//CpuRegCR4 CR4;
 	//CR4.Value = CpuReadCR4();
-	//PrintFormatted("CR4: 0x%x\r\n", CR4.Value);
+	//LogFormatted("CR4: 0x%x\r\n", CR4.Value);
 	//CR4.SMEP = 1;
 	//CR4.SMAP = 0;
 	//CR4.PKE = 0;
-	//PrintFormatted("CR4: 0x%x\r\n", CR4.Value);
+	//LogFormatted("CR4: 0x%x\r\n", CR4.Value);
 	//CpuWriteCR4(CR4.Value);
 
 	//Disable NXE
@@ -100,7 +100,7 @@ void InitializePaging()
 	for(int c = 0; c < MAX_CORES; c++)
 	{
 		KernelCr3[c] = InitializeMapping();
-		MapAddressFromPhysicalHugeRange(KernelCr3[c], GB(0), GB(4), GB(0), true, false, false);
+		VmmMapAddressFromPhysicalHugeRange(KernelCr3[c], GB(0), GB(4), GB(0), true, false, false);
 	}
 }
 

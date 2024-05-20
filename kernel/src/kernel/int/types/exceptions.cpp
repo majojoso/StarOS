@@ -10,10 +10,19 @@
 
 #include "exceptions.h"
 
+#include<kernel/base/panic.h>
+
 #include<kernel/int/gen/registers.h>
 #include<kernel/int/gen/idt.h>
+#include<kernel/int/types/ipi.h>
+
+#include<kernel/cpu/cpuid.h>
+#include<kernel/smp/smp.h>
+#include<kernel/smp/spinlock.h>
 
 #include<kernel/mm/fault.h>
+
+#include<kernel/ps/procdata.h>
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Information
@@ -68,6 +77,8 @@ enum Exceptions
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Declarations
+
+UInt64 ExceptionsLock = 0;
 
 HANDLER_EXCEPTION(0)
 HANDLER_EXCEPTION(1)
@@ -149,14 +160,38 @@ extern "C" RegisterSet *HandlerExceptionGeneral(int Id, RegisterSet *Registers)
 	//Result
 	RegisterSet *Result = Registers;
 
+	//Lock
+	//SpinLockRaw(&ExceptionsLock);
+
+	//Core
+	UInt8 ApicId = CpuidGetLapicId();
+	UInt64 Core = GetCoreFromApicId(ApicId);
+
+	//Panic
+	PanicInitiate();
+
 	//Log
-	PrintFormatted("Exception %d(%d): %s\r\n", Id, (Int64) Registers->Error, ExceptionMessages[Id]);
-	DumpRegisters(Registers);
+	PanicFormatted("Core %d, Exception %d, Error %d, %s\r\n", Core, Id, (Int64) Registers->Error, ExceptionMessages[Id]);
 
 	//Page Fault
-	if(Id == 14) PageFaultHandler(Registers, Registers->Error);
+	if(Id == 14) PageFaultHandler(Core, Registers, Registers->Error);
 
-	//Halt
+	//Log
+	PanicFormatted("\r\n");
+
+	//Dump Registers
+	DumpRegisters(Registers);
+
+	//Dump Process
+	DumpProcessInfo(Core, Registers);
+
+	//Halt Others
+	//SendHaltIpi();
+
+	//Unlock
+	//SpinUnlockRaw(&ExceptionsLock);
+
+	//Halt Self
 	while(true) asm("cli;hlt");
 
 	//Result

@@ -44,6 +44,8 @@ struct TssEntry
 extern "C" UInt64 ReadRSP();
 extern "C" void WriteTR(UInt16 Offset);
 
+UInt64 TssGetKernelIST2(UInt64 Core);
+
 void TssSetKernelStack(UInt64 Core, UInt64 Stack);
 
 void InitializeTss();

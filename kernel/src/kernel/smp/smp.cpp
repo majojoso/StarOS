@@ -35,13 +35,32 @@ UInt8  IoApicCount = 0;
 //Implementation
 
 //-------------------------------------------------------------------------------------------------------------------------//
+//API
+
+UInt64 GetCoreFromApicId(UInt8 ApicId)
+{
+	for(int i = 0; i < CoreCount; i++)
+	{
+		if(CoresLocalApicIds[i] == ApicId)
+		{
+			return i;
+		}
+	}
+
+	return 0;
+}
+
+//-------------------------------------------------------------------------------------------------------------------------//
 //MADT
 
 void ParseMadt(UInt8 *madt)
 {
+	//Reset
+	CoreCount = 0;
+
 	//LAPIC ADD
 	LocalApicBaseAddress = *((UInt32 *) (madt + 0x24));
-	PrintFormatted("[SMP ] LAPIC ADD: %d\r\n", LocalApicBaseAddress);
+	LogFormatted("[SMP ] LAPIC ADD: %d\r\n", LocalApicBaseAddress);
 
 	//Iterate Records (Variable Length)
 	UInt8 *Begin = madt + 44;
@@ -52,7 +71,7 @@ void ParseMadt(UInt8 *madt)
 		UInt8 Type = Current[0];
 		UInt8 Length = Current[1];
 		UInt8 *Entry = Current + 2;
-		PrintFormatted("[SMP ] T%d(%d): ", Type, Length);
+		LogFormatted("[SMP ] T%d(%d): ", Type, Length);
 
 		//Switch Type
 		switch(Type)
@@ -74,7 +93,7 @@ void ParseMadt(UInt8 *madt)
 				CoreCount++;
 
 				//Debug
-				PrintFormatted("CORE %d LAPIC %d STATE %s%s\r\n", AcpiProcessorId, ApicId, Capable ? "C" : "-", Enabled ? "E" : "-");
+				LogFormatted("CORE %d LAPIC %d STATE %s%s\r\n", AcpiProcessorId, ApicId, Capable ? "C" : "-", Enabled ? "E" : "-");
 			}
 			break;
 			//IOAPIC INT ADD
@@ -91,7 +110,7 @@ void ParseMadt(UInt8 *madt)
 				IoApicCount++;
 
 				//Debug
-				PrintFormatted("IOAPIC %d BASE: INT %d ADD %d\r\n", IoApicId, IoApicBaseInterrupt, IoApicBaseAddress);
+				LogFormatted("IOAPIC %d BASE: INT %d ADD %d\r\n", IoApicId, IoApicBaseInterrupt, IoApicBaseAddress);
 			}
 			break;
 			//IOAPIC INT SRC OVR
@@ -106,7 +125,7 @@ void ParseMadt(UInt8 *madt)
 				bool TriggerMode   = (Flags & 0x1000) > 0;
 
 				//Debug
-				PrintFormatted("IOAPIC INT SRC OVR: BUS %d IRQ %d INT %d %s %s\r\n", Bus, Irq, InterruptId, PinPolarity ? "LO" : "HI", TriggerMode ? "LV" : "ED");
+				LogFormatted("IOAPIC INT SRC OVR: BUS %d IRQ %d INT %d %s %s\r\n", Bus, Irq, InterruptId, PinPolarity ? "LO" : "HI", TriggerMode ? "LV" : "ED");
 			}
 			break;
 			//IOAPIC NMI SRC
@@ -120,7 +139,7 @@ void ParseMadt(UInt8 *madt)
 				UInt32 InterruptId = *((UInt32 *) (Entry + 3));
 
 				//Debug
-				PrintFormatted("IOAPIC NMI SRC: SRC %d INT %d %s %s\r\n", NmiSource, InterruptId, PinPolarity ? "LO" : "HI", TriggerMode ? "LV" : "ED");
+				LogFormatted("IOAPIC NMI SRC: SRC %d INT %d %s %s\r\n", NmiSource, InterruptId, PinPolarity ? "LO" : "HI", TriggerMode ? "LV" : "ED");
 			}
 			break;
 			//LAPIC NMIs
@@ -134,7 +153,7 @@ void ParseMadt(UInt8 *madt)
 				UInt8  LocalInterruptId = *(Entry + 3);
 
 				//Debug
-				PrintFormatted("LAPIC NMIs: CORE %d LINT %d %s %s\r\n", AcpiProcessorId, LocalInterruptId, PinPolarity ? "LO" : "HI", TriggerMode ? "LV" : "ED");
+				LogFormatted("LAPIC NMIs: CORE %d LINT %d %s %s\r\n", AcpiProcessorId, LocalInterruptId, PinPolarity ? "LO" : "HI", TriggerMode ? "LV" : "ED");
 			}
 			break;
 			//LAPIC ADD OVR
@@ -144,7 +163,7 @@ void ParseMadt(UInt8 *madt)
 				LocalApicBaseAddress = *((UInt64 *) (Entry + 2));
 
 				//Debug
-				PrintFormatted("LAPIC ADD OVR: %d\r\n", LocalApicBaseAddress);
+				LogFormatted("LAPIC ADD OVR: %d\r\n", LocalApicBaseAddress);
 			}
 			break;
 			//CORE LAPIC STATE 2
@@ -162,14 +181,14 @@ void ParseMadt(UInt8 *madt)
 				CoreCount++;
 
 				//Debug
-				PrintFormatted("CORE %d LAPIC %d STATE %s%s 2\r\n", AcpiProcessorId, ApicId, Capable ? "C" : "-", Enabled ? "E" : "-");
+				LogFormatted("CORE %d LAPIC %d STATE %s%s 2\r\n", AcpiProcessorId, ApicId, Capable ? "C" : "-", Enabled ? "E" : "-");
 			}
 			break;
 			//UNK
 			default:
 			{
 				//Debug
-				PrintFormatted("UNK\r\n");
+				LogFormatted("UNK\r\n");
 			}
 			break;
 		}
@@ -188,11 +207,11 @@ void InitializeSmp()
 	ParseMadt(madt);
 
 	//Debug
-	PrintFormatted("[SMP ] Cores %d, LAPIC ADD %d, Cores LAPICs", CoreCount, LocalApicBaseAddress);
-	for(int i = 0; i < CoreCount; i++) PrintFormatted(" %d", CoresLocalApicIds[i]);
-	PrintFormatted(", IOAPICs");
-	for(int i = 0; i < IoApicCount; i++) PrintFormatted(" (ID %d INT %d ADD %d)", i, IoApicBaseInterrupts[i], IoApicBaseAddresses[i]);
-	PrintFormatted("\r\n");
+	LogFormatted("[SMP ] Cores %d, LAPIC ADD %d, Cores LAPICs", CoreCount, LocalApicBaseAddress);
+	for(int i = 0; i < CoreCount; i++) LogFormatted(" %d", CoresLocalApicIds[i]);
+	LogFormatted(", IOAPICs");
+	for(int i = 0; i < IoApicCount; i++) LogFormatted(" (ID %d INT %d ADD %d)", i, IoApicBaseInterrupts[i], IoApicBaseAddresses[i]);
+	LogFormatted("\r\n");
 }
 
 void DeinitializeSmp()

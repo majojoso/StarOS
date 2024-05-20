@@ -13,26 +13,36 @@
 
 #include<include/globals.h>
 
+#include<kernel/mm/memory.h>
+
 //-------------------------------------------------------------------------------------------------------------------------//
 //Definitions
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Prototypes
 
-void ClearPageFrame(UInt64 PageFrame);
-void ClearPageFrames(UInt64 PageFrameFrom, UInt64 Count);
-void ClearPageFrameRange(UInt64 PageFrameFrom, UInt64 PageFrameTo);
+bool PmmIsLocked(UInt64 Frame);
 
-void CopyPageFrame(UInt64 PageFrameFrom, UInt64 PageFrameTo);
-void CopyPageFrameRange(UInt64 PageFrameFrom, UInt64 PageFrameTo, UInt64 PageFrameCount);
+void PmmLockFrame(UInt64 Frame, EfiMemoryTypes Type, EfiMemoryAttributes Attribute);
+void PmmLockFrames(UInt64 PhysicalStart, UInt64 NumberOfFrames, EfiMemoryTypes Type, EfiMemoryAttributes Attribute);
 
-UInt64 EasyReservePageFrame();
-UInt64 EasyReservePageFrames(UInt64 Count);
-bool EasyFreePageFrame(UInt64 Pageframe);
-UInt64 EasyReservePageFrameAddress();
-UInt64 EasyReservePageFramesAddress(UInt64 Count);
+void PmmUnlockFrame(UInt64 Frame);
+void PmmUnlockFrames(UInt64 PhysicalStart, UInt64 NumberOfFrames);
 
-void InitializePmm();
+bool PmmIsFree(UInt64 Frame);
+bool PmmIsUsed(UInt64 Frame);
+bool PmmIsUsedOrLocked(UInt64 Frame);
+
+UInt64 PmmFindFree(UInt64 Count);
+UInt64 PmmReserve(UInt64 Count);
+UInt64 PmmReserveAddress(UInt64 Count);
+bool PmmFree(UInt64 Frame, UInt64 Count);
+
+Int8 PmmGetReferenceCount(UInt64 Frame);
+bool PmmIncreaseReferenceCount(UInt64 Frame, UInt64 Amount);
+bool PmmDecreaseReferenceCount(UInt64 Frame, UInt64 Amount);
+
+void InitializePmm(UInt64 MemorySize, UInt64 Root, UInt64 UsableFrom);
 void DeinitializePmm();
 
 //-------------------------------------------------------------------------------------------------------------------------//

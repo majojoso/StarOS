@@ -31,20 +31,20 @@ List<IrqHandler *> *IrqHandlers[IRQS];
 //-------------------------------------------------------------------------------------------------------------------------//
 //Handler
 
-void IrqHandlerRoutine(RegisterSet *Registers, int Id)
+void IrqHandlerRoutine(UInt64 Core, RegisterSet *Registers, int Id)
 {
 	//Loop Handlers
 	for(auto Handler : *IrqHandlers[Id])
 	{
 		//Call Handler Routine
-		if(Handler->Handler != nullptr) Handler->Handler(Registers);
+		if(Handler->Handler != nullptr) Handler->Handler(Core, Registers);
 	}
 }
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //API
 
-void IrqInstallHandler(int Id, void (*Handler)(RegisterSet *Registers))
+void IrqInstallHandler(int Id, void (*Handler)(UInt64 Core, RegisterSet *Registers))
 {
 	//Create
 	IrqHandler *NewHandler = new IrqHandler();
@@ -54,7 +54,7 @@ void IrqInstallHandler(int Id, void (*Handler)(RegisterSet *Registers))
 	IrqHandlers[Id]->AddTail(NewHandler);
 }
 
-bool IrqUninstallHandler(int Id, void (*Handler)(RegisterSet *Registers))
+bool IrqUninstallHandler(int Id, void (*Handler)(UInt64 Core, RegisterSet *Registers))
 {
 	//Loop Handlers
 	//for(auto Current : *IrqHandlers[Id])

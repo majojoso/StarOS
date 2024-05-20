@@ -21,8 +21,13 @@
 //-------------------------------------------------------------------------------------------------------------------------//
 //Prototypes
 
-void PrintCharacterPsf(DrawSurface *Surface, ConsoleState *Console, char Character, int PosY, int PosX, UInt32 Color);
-void PrintCharacterAscii(DrawSurface *Surface, ConsoleState *Console, char Character, int PosY, int PosX, UInt32 Color);
+void LoadSystemFont(bool Early);
+
+void PrintCharacterPsf(DrawSurface *Surface, DrawSelection *Selection, char Character, int PosY, int PosX, UInt32 Color);
+void PrintCharacterAscii(DrawSurface *Surface, DrawSelection *Selection, char Character, int PosY, int PosX, UInt32 Color);
+
+void PrintTo(DrawSurface *Surface, DrawSelection *Selection, ConsoleState *Console, UInt32 ColorBackground, UInt32 ColorForeground, const char *Text);
+void PrintTo(const char *Text, UInt32 ColorBackground, UInt32 ColorForeground);
 
 void InitializeFont();
 void DeinitializeFont();

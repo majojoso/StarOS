@@ -39,9 +39,9 @@ enum ThreadState
 
 struct ThreadStatistics
 {
-	UInt64 CyclesTotal;
-	UInt64 CyclesInterval;
+	UInt64 CyclesCurrent;
 	UInt64 CyclesPrevious;
+	UInt64 CyclesInterval;
 	UInt64 Switches;
 	UInt64 Percentage;
 };
@@ -58,9 +58,18 @@ struct Thread
 	UInt64 SleepTicksBegin;
 	UInt64 SleepTicksEnd;
 
-	UInt64 KernelStack;
+	UInt64 KernelStackBegin;
+	UInt64 KernelStackEnd;
+	UInt64 KernelStackPointer;
+
+	UInt64 UserStackBegin;
+	UInt64 UserStackEnd;
+	UInt64 UserStackPointer;
+
 	RegisterSet Registers;
 	RegisterSet *RegistersPointer;
+
+	UInt8 *FxState;
 };
 
 enum TaskState
@@ -85,11 +94,17 @@ struct Task
 
 	CR3 PagingPointer;
 
+	UInt64 CodeBegin;
+	UInt64 CodeEnd;
+	UInt64 CodePointer;
+
 	List<Thread *> *Threads;
 };
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Prototypes
+
+void DumpProcessInfo(UInt64 Core, RegisterSet *Registers);
 
 void InitializeProcData();
 void DeinitializeProcData();

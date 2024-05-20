@@ -14,6 +14,8 @@
 
 #include<kernel/int/api/handler.h>
 
+#include<kernel/smp/spinlock.h>
+
 //-------------------------------------------------------------------------------------------------------------------------//
 //Information
 
@@ -26,6 +28,8 @@
 volatile UInt64 TimerTicks = 0;
 
 List<TimerHandler *> *TimerHandlers = nullptr;
+
+UInt64 TimerLock = 0;
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Implementation
@@ -50,8 +54,11 @@ void TimerWait(UInt64 TickCount)
 //-------------------------------------------------------------------------------------------------------------------------//
 //Handler
 
-void TimerHandlerRoutine(RegisterSet *Registers)
+void TimerHandlerRoutine(UInt64 Core, RegisterSet *Registers)
 {
+	//Limit to BSP (TODO: Hardcode)
+	if(Core > 0) return;
+
 	//Increase Ticks Global
 	TimerTicks++;
 
@@ -65,7 +72,7 @@ void TimerHandlerRoutine(RegisterSet *Registers)
 		if((Handler->Counter % Handler->Interval) == 0)
 		{
 			//Call Handler Routine
-			if(Handler->Handler != nullptr) Handler->Handler(Registers);
+			if(Handler->Handler != nullptr) Handler->Handler(Core, Registers);
 		}
 	}
 }
@@ -73,7 +80,7 @@ void TimerHandlerRoutine(RegisterSet *Registers)
 //-------------------------------------------------------------------------------------------------------------------------//
 //Asynchronous Timer
 
-void TimerStart(void (*Handler)(RegisterSet *Registers), UInt64 Interval)
+void TimerStart(void (*Handler)(UInt64 Core, RegisterSet *Registers), UInt64 Interval)
 {
 	//Invalid
 	if(Interval == 0) return;
@@ -85,10 +92,12 @@ void TimerStart(void (*Handler)(RegisterSet *Registers), UInt64 Interval)
 	NewHandler->Counter = 0;
 
 	//Link
+	SpinLockRaw(&TimerLock);
 	TimerHandlers->AddTail(NewHandler);
+	SpinUnlockRaw(&TimerLock);
 }
 
-bool TimerStop(void (*Handler)(RegisterSet *Registers))
+bool TimerStop(void (*Handler)(UInt64 Core, RegisterSet *Registers))
 {
 	//Loop Handlers
 	//for(auto Current : *IrqHandlers[Id])

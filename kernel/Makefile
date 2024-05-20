@@ -21,7 +21,11 @@ OVMFDIR   = OVMF
 OVMFCODE  = OVMF_CODE-pure-efi.fd
 OVMFVARS  = OVMF_VARS-pure-efi.fd
 
-FONT      = font
+MEDIA     = media
+IMAGES    = images
+LOGO      = planets.tga
+PROG      = progress.tga
+FONTS     = fonts
 SYSFONT   = bizcat.psf
 
 BOOTLDR   = ../boot/osload.efi
@@ -111,9 +115,9 @@ endif
 
 PANICEM   =
 # Debug: -d cpu_reset -no-shutdown -D qemu.log
-# Full: -d int,cpu_reset -no-reboot -no-shutdown -D qemu.log 
+# Full: -d int,cpu_reset -no-reboot -no-shutdown -D qemu.log
 
-EMFLAGS   = -cpu qemu64 $(KVM) -M q35 -m 2G -smp 4 -net none -k de $(DEBUGEM) $(PANICEM) \
+EMFLAGS   = -cpu qemu64 $(KVM) -M q35 -m 2G -smp 4 -net none -k de -serial stdio $(DEBUGEM) $(PANICEM) \
             -drive file=$(BIN)/$(IMG),format=raw \
             -drive file=$(BIN)/$(ImageDataDisk),format=raw \
             -drive if=pflash,format=raw,unit=0,file="$(RES)/$(OVMFDIR)/$(OVMFCODE)",readonly=on \
@@ -198,8 +202,12 @@ filldata:
 	@mkdir -p /mnt/programs
 	@cp testfile.txt /mnt/programs/
 	@cp ../applications/test/.bin/test.elf /mnt/programs/
-	@mkdir -p /mnt/fonts
-	@cp $(RES)/$(FONT)/$(SYSFONT) /mnt/fonts/system.psf
+	@mkdir -p /mnt/$(MEDIA)
+	@mkdir -p /mnt/$(MEDIA)/$(FONTS)
+	@cp $(RES)/$(MEDIA)/$(FONTS)/$(SYSFONT) /mnt/$(MEDIA)/$(FONTS)/system.psf
+	@mkdir -p /mnt/$(MEDIA)/$(IMAGES)
+	@cp $(RES)/$(MEDIA)/$(IMAGES)/$(LOGO) /mnt/$(MEDIA)/$(IMAGES)/logo.tga
+	@cp $(RES)/$(MEDIA)/$(IMAGES)/$(PROG) /mnt/$(MEDIA)/$(IMAGES)/progress.tga
 
 	@umount /mnt
 

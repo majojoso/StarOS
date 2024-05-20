@@ -12,6 +12,13 @@
 
 #include<kernel/int/api/timer.h>
 
+#include<kernel/ps/syscalls.h>
+#include<kernel/api/apis.h>
+
+#include<kernel/smp/spinlock.h>
+
+#include<kernel/ps/tasks.h>
+
 #include<ui/draw.h>
 #include<ui/compositor.h>
 
@@ -137,7 +144,6 @@ UInt64 Scores;
 TStoneType LastStone;
 
 bool Started = false;
-bool Locked = false;
 
 void RotateStone(bool (*RotatedStoneBitmap)[4][4], TStoneType Stone, TStoneRotation Rotation);
 
@@ -148,13 +154,15 @@ UInt64 TetrisWindowHandle = 0;
 
 DrawSurface TetrisWindowSurface =
 {
-	.Framebuffer = TetrisWindowBuffer,
+	.Buffer = TetrisWindowBuffer,
 	.BitsPerPixel = 32,
 	.Height = TetrisWindowHeight,
 	.Width = TetrisWindowWidth
 };
 
 DrawSelection TetrisWindowSelection;
+
+UInt64 TetrisLock = 0;
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Implementation
@@ -199,7 +207,7 @@ void DrawFramedRectangle(UInt64 X1, UInt64 Y1, UInt64 X2, UInt64 Y2, UInt32 Fram
 void Redraw()
 {
 	//Update
-	CompositorUpdateWindowBitmap(TetrisWindowHandle, TetrisWindowSurface.Framebuffer);
+	CompositorUpdateWindowBitmap(TetrisWindowHandle, TetrisWindowSurface.Buffer);
 }
 
 //-------------------------------------------------------------------------------------------------------------------------//
@@ -600,11 +608,11 @@ void SpawnStone()
 		//Clear
 		ClearField();
 
-		//Log
-		//PrintFormatted("Game over!\r\n");
-		//PrintFormatted("Lines : %d\r\n", Lines);
-		//PrintFormatted("Points: %d\r\n", Lines * 15);
-		//PrintFormatted("Stones: %d\r\n", CountBlocks());
+		//LogFormatted
+		//LogFormatted("Game over!\r\n");
+		//LogFormatted("Lines : %d\r\n", Lines);
+		//LogFormatted("Points: %d\r\n", Lines * 15);
+		//LogFormatted("Stones: %d\r\n", CountBlocks());
 
 		//Start
 		Started = true;
@@ -628,10 +636,10 @@ void ProcessFilledLines()
 	}
 }
 
-void TimerTick(RegisterSet *Registers)
+void TimerTick(UInt64 Core, RegisterSet *Registers)
 {
 	//Locked ?
-	if(Locked) return;
+	if(TetrisLock) return;
 
 	//Running ?
 	if(!Started) return;
@@ -669,13 +677,13 @@ void TimerTick(RegisterSet *Registers)
 void KeyEvent(char *Key)
 {
 	//Locked ?
-	if(Locked) return;
+	if(TetrisLock) return;
 
 	//Running ?
 	if(!Started) return;
 
 	//Lock
-	Locked = true;
+	SpinLockRaw(&TetrisLock);
 
 	//LEFT
 	if(StringCompare(Key, "ARROW_LEFT"))
@@ -752,9 +760,9 @@ void KeyEvent(char *Key)
 	else if(StringCompare(Key, "ARROW_DOWN"))
 	{
 		//Tick
-		Locked = false;
-		TimerTick(nullptr);
-		Locked = true;
+		SpinUnlockRaw(&TetrisLock);
+		TimerTick(0, nullptr);
+		SpinLockRaw(&TetrisLock);
 	}
 	//SPACE
 	else if(StringCompare(Key, " "))
@@ -782,7 +790,7 @@ void KeyEvent(char *Key)
 	}
 
 	//Unlock
-	Locked = false;
+	SpinUnlockRaw(&TetrisLock);
 }
 
 void Repaint()
@@ -806,6 +814,22 @@ void TetrisHidHandler(HidPackage Package)
 	}
 }
 
+void TetrisRoutine()
+{
+	//While Running
+	while(Started)
+	{
+		//Handler
+		TimerTick(0, nullptr);
+
+		//Sleep
+		ApiSleep(StoneSpeed);
+	}
+
+	//Exit
+	ApiExitProcess();
+}
+
 //-------------------------------------------------------------------------------------------------------------------------//
 //Initialization
 
@@ -814,7 +838,7 @@ void InitializeTetris()
 	//Window Surface
 	TetrisWindowSurface =
 	{
-		.Framebuffer = TetrisWindowBuffer,
+		.Buffer = TetrisWindowBuffer,
 		.BitsPerPixel = 32,
 		.Height = TetrisWindowHeight,
 		.Width = TetrisWindowWidth
@@ -832,8 +856,11 @@ void InitializeTetris()
 	//Window
 	TetrisWindowHandle = CompositorCreateWindow((char *) "Tetris", (char *) "Tetris", 250, 250, TetrisWindowSurface.Height, TetrisWindowSurface.Width, 255, Normal, 1, 0, TetrisHidHandler);
 
-	//Clear
+	//Clear Window
 	ClearSurface(&TetrisWindowSurface, 0xFFEFF4F9);
+
+	//Clear Field
+	ClearField();
 
 	//Stone
 	StoneSpeed = 250;
@@ -845,10 +872,17 @@ void InitializeTetris()
 	Started = true;
 
 	//Timer
-	TimerStart(TimerTick, StoneSpeed);
+	//TimerStart(TimerTick, StoneSpeed);
+
+	//Task
+	CreateTask("tetris", TetrisRoutine, false, false, 0);
 }
 
 void DeinitializeTetris()
 {
-	//
+	//Timer
+	//TimerStop(TimerTick);
+
+	//Started
+	Started = false;
 }

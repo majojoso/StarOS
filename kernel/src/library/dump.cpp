@@ -30,8 +30,8 @@ void DumpFile(UInt8 *Buffer, UInt64 Size)
 	//Dump
 	for(int j = 0; j < Size; j++)
 	{
-		if(j % 64 == 0 && j / 64 != 0) PrintFormatted("|\r\n");
-		if(j % 64 == 0) PrintFormatted("|");
+		if(j % 64 == 0 && j / 64 != 0) LogFormatted("|\r\n");
+		if(j % 64 == 0) LogFormatted("|");
 
 		if(false
 			|| (Buffer[j] >= '0' && Buffer[j] <= '9')
@@ -40,19 +40,19 @@ void DumpFile(UInt8 *Buffer, UInt64 Size)
 			|| (Buffer[j] == '#' || Buffer[j] == '\'' || Buffer[j] == '+' || Buffer[j] == '*' || Buffer[j] == '~' || Buffer[j] == '-' || Buffer[j] == '_' || Buffer[j] == '.' || Buffer[j] == ':' || Buffer[j] == ',' || Buffer[j] == ';')
 		)
 		{
-			PrintFormatted("%c", Buffer[j]);
+			LogFormatted("%c", Buffer[j]);
 		}
 		else if(Buffer[j] == '\0')
 		{
-			PrintFormatted(".");
+			LogFormatted(".");
 		}
 		else
 		{
-			PrintFormatted("<%x>", Buffer[j]);
+			LogFormatted("<%x>", Buffer[j]);
 		}
 	}
 
-	PrintFormatted("|\r\n");
+	LogFormatted("|\r\n");
 }
 
 void DumpSector(UInt8 *Buffer)
@@ -60,8 +60,8 @@ void DumpSector(UInt8 *Buffer)
 	//Dump
 	for(int j = 0; j < 512; j++)
 	{
-		if(j % 64 == 0 && j / 64 != 0) PrintFormatted("|\r\n");
-		if(j % 64 == 0) PrintFormatted("|");
+		if(j % 64 == 0 && j / 64 != 0) LogFormatted("|\r\n");
+		if(j % 64 == 0) LogFormatted("|");
 
 		if(false
 			|| (Buffer[j] >= '0' && Buffer[j] <= '9')
@@ -70,28 +70,28 @@ void DumpSector(UInt8 *Buffer)
 			|| (Buffer[j] == '#' || Buffer[j] == '\'' || Buffer[j] == '+' || Buffer[j] == '*' || Buffer[j] == '~' || Buffer[j] == '-' || Buffer[j] == '_' || Buffer[j] == '.' || Buffer[j] == ':' || Buffer[j] == ',' || Buffer[j] == ';')
 		)
 		{
-			PrintFormatted("%c", Buffer[j]);
+			LogFormatted("%c", Buffer[j]);
 		}
 		else if(Buffer[j] == '\0')
 		{
-			PrintFormatted(".");
+			LogFormatted(".");
 		}
 		else
 		{
-			PrintFormatted("<%x>", Buffer[j]);
+			LogFormatted("<%x>", Buffer[j]);
 		}
 	}
 
-	PrintFormatted("|\r\n");
+	LogFormatted("|\r\n");
 }
 
 void DumpDiskContent(UInt64 Disk, UInt8 *Buffer)
 {
 	//Dump
-	PrintFormatted("[AHCI]   Buffer DAT #%d: ", Disk);
+	LogFormatted("[AHCI]   Buffer DAT #%d: ", Disk);
 	for(int j = 0; j < 2048; j++)
 	{
-		if(j % 512 == 0) PrintFormatted("\r\n\r\nSector %d:\r\n", (j / 512));
+		if(j % 512 == 0) LogFormatted("\r\n\r\nSector %d:\r\n", (j / 512));
 
 		if(false
 			|| (Buffer[j] >= '0' && Buffer[j] <= '9')
@@ -100,16 +100,16 @@ void DumpDiskContent(UInt64 Disk, UInt8 *Buffer)
 			|| (Buffer[j] == '#' || Buffer[j] == '\'' || Buffer[j] == '+' || Buffer[j] == '*' || Buffer[j] == '~' || Buffer[j] == '-' || Buffer[j] == '_' || Buffer[j] == '.' || Buffer[j] == ':' || Buffer[j] == ',' || Buffer[j] == ';')
 		)
 		{
-			PrintFormatted("%c", Buffer[j]);
+			LogFormatted("%c", Buffer[j]);
 		}
 		else if(Buffer[j] == '\0')
 		{
-			PrintFormatted("~");
+			LogFormatted("~");
 		}
 		else
 		{
-			PrintFormatted("<%x>", Buffer[j]);
+			LogFormatted("<%x>", Buffer[j]);
 		}
 	}
-	PrintFormatted("\r\n");
+	LogFormatted("\r\n");
 }

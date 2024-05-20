@@ -13,7 +13,11 @@
 #include<kernel/int/gen/registers.h>
 #include<kernel/int/gen/idt.h>
 
+#include<kernel/cpu/cpuid.h>
+#include<kernel/smp/smp.h>
+
 #include<kernel/ps/syscalls.h>
+#include<kernel/ps/scheduler.h>
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Information
@@ -43,9 +47,13 @@ extern "C" RegisterSet *HandlerSintGeneral(int Id, RegisterSet *Registers)
 	//System Call Interrupt
 	if(Id == 253 || Id == 254)
 	{
-		//Log
-		//PrintFormatted("SINT%d\r\n", Id);
+		//LogFormatted
+		//LogFormatted("SINT%d\r\n", Id);
 		//DumpRegisters(Registers);
+
+		//Core
+		UInt8 ApicId = CpuidGetLapicId();
+		UInt64 Core = GetCoreFromApicId(ApicId);
 
 		//Api Id
 		UInt64 ApiId = Registers->rax;
@@ -55,8 +63,14 @@ extern "C" RegisterSet *HandlerSintGeneral(int Id, RegisterSet *Registers)
 		UInt64 *StackParameters = (UInt64 *) (Registers->rsp + 0x08); // + 0x10
 		UInt64 ApiParameters[16] = { Registers->rdi, Registers->rsi, Registers->rdx, Registers->rcx, Registers->r8, Registers->r9, StackParameters[0], StackParameters[1], StackParameters[2], StackParameters[3], StackParameters[4], StackParameters[5], StackParameters[6], StackParameters[7], StackParameters[8], StackParameters[9] };
 
+		//Save Registers
+		SetSyscallRegisters(Core, Registers);
+
 		//Call
 		Registers->rax = SyscallHandler(ApiId, ApiParameters);
+
+		//Restore Registers
+		Result = GetSyscallRegisters(Core);
 	}
 
 	//Result

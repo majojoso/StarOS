@@ -22,3 +22,7 @@
 
 SyscallStubSint 3, ProcessDebugBlink
 SyscallStubSint 4, GetProcessId
+SyscallStubSint 5, UserPrint
+SyscallStubSint 6, Sleep
+SyscallStubSint 7, ExitProcess
+SyscallStubSint 8, TimerStart

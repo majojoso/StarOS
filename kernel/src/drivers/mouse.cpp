@@ -13,6 +13,7 @@
 #include<kernel/io/ports.h>
 
 #include<kernel/int/api/handler.h>
+#include<kernel/int/apic/ioapic.h>
 
 #include<drivers/hid.h>
 
@@ -74,8 +75,8 @@ void MouseWrite(UInt8 Data)
 
 void ReportMouseState(MousePacket Packet)
 {
-	//Log
-	//PrintFormatted("(%d:%d %s%s%s)", Packet.MovementX, Packet.MovementY, Packet.ButtonL ? "L" : "", Packet.ButtonM ? "M" : "", Packet.ButtonR ? "R" : "");
+	//LogFormatted
+	//LogFormatted("(%d:%d %s%s%s)", Packet.MovementX, Packet.MovementY, Packet.ButtonL ? "L" : "", Packet.ButtonM ? "M" : "", Packet.ButtonR ? "R" : "");
 
 	//Report
 	HidAddMouseEvent(Packet);
@@ -101,7 +102,7 @@ void ProcessMousePackage()
 	ReportMouseState(Packet);
 }
 
-void MouseHandler(RegisterSet *Registers)
+void MouseHandler(UInt64 Core, RegisterSet *Registers)
 {
 	Int8 Data = PortReadU8(KBD_DAT);
 
@@ -155,9 +156,11 @@ void SetupMouse()
 
 void InitializeMouse()
 {
-	SetupMouse();
-
 	IrqInstallHandler(12, MouseHandler);
+
+	IoapicRedirectIsaInterrupt(12, 12, 0);
+
+	SetupMouse();
 }
 
 void DeinitializeMouse()

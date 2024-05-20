@@ -24,6 +24,8 @@
 //-------------------------------------------------------------------------------------------------------------------------//
 //Prototypes
 
+UInt64 GetCoreFromApicId(UInt8 ApicId);
+
 void InitializeSmp();
 void DeinitializeSmp();
 

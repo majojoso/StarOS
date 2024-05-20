@@ -34,16 +34,16 @@ FramebufferBase FramebufferUefi;
 void InitializeFramebuffer()
 {
 	//Save Screen Parameters
-	FramebufferUefi.FrontBuffer.Framebuffer = (UInt32 *) (GlobalBootInfo->BootFramebuffer->BaseAddress);
+	FramebufferUefi.FrontBuffer.Buffer = (UInt32 *) (GlobalBootInfo->BootFramebuffer->BaseAddress);
 	FramebufferUefi.FrontBuffer.BitsPerPixel = 32;
 	FramebufferUefi.FrontBuffer.Height = GlobalBootInfo->BootFramebuffer->Height;
 	FramebufferUefi.FrontBuffer.Width = GlobalBootInfo->BootFramebuffer->Width;
 
 	//Save Console Parameters
-	FramebufferUefi.Console.ConsoleFontHeight = 16;
-	FramebufferUefi.Console.ConsoleFontWidth = 8;
-	FramebufferUefi.Console.ConsoleHeight = FramebufferUefi.FrontBuffer.Height / FramebufferUefi.Console.ConsoleFontHeight;
-	FramebufferUefi.Console.ConsoleWidth = FramebufferUefi.FrontBuffer.Width / FramebufferUefi.Console.ConsoleFontWidth;
+	FramebufferUefi.Console.FontHeight = 16;
+	FramebufferUefi.Console.FontWidth = 8;
+	FramebufferUefi.Console.Height = FramebufferUefi.FrontBuffer.Height / FramebufferUefi.Console.FontHeight;
+	FramebufferUefi.Console.Width = FramebufferUefi.FrontBuffer.Width / FramebufferUefi.Console.FontWidth;
 
 	//Clear Screen
 	ClearSurface(&FramebufferUefi.FrontBuffer);

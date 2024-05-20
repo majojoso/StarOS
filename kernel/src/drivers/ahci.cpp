@@ -45,11 +45,8 @@
 
 void *RequestPage()
 {
-	//WORKAROUND: Avoid potential invasiveness of AHCI driver, seems to use more pages than allocated.
-	//return (void *) MB(10) + EasyReservePageFrameAddress();
-
 	//Reserve
-	return (void *) EasyReservePageFrameAddress();
+	return (void *) PmmReserveAddress(1);
 }
 
 void MapMemory(void *Virtual, void *Physical)
@@ -216,7 +213,7 @@ PortType AhciDriver::CheckPortType(HbaPort *Port)
 void AhciDriver::ProbePorts()
 {
 	//Debug
-	PrintFormatted("[AHCI]   Probe Ports\r\n");
+	LogFormatted("[AHCI]   Probe Ports\r\n");
 
 	//Loop Ports
 	UInt32 PortsImplemented = ABAR->PortsImplemented;
@@ -242,7 +239,7 @@ void AhciDriver::ProbePorts()
 				Ports[PortCount]->Port = &ABAR->Ports[i];
 
 				//Debug
-				PrintFormatted("[AHCI]     Port #%d (%d): %s (@%d)\r\n", Ports[PortCount]->Id, i, (Ports[PortCount]->Type == SATA ? "SATA  " : Ports[PortCount]->Type == SATAPI ? "SATAPI" : "UNKNOWN"), Ports[PortCount]->Port);
+				LogFormatted("[AHCI]     Port #%d (%d): %s (@%d)\r\n", Ports[PortCount]->Id, i, (Ports[PortCount]->Type == SATA ? "SATA  " : Ports[PortCount]->Type == SATAPI ? "SATAPI" : "UNKNOWN"), Ports[PortCount]->Port);
 
 				//Count
 				PortCount++;
@@ -270,7 +267,7 @@ bool AhciDriver::Read(UInt64 Port, UInt64 Sector, UInt32 SectorCount, void *Buff
 AhciDriver::AhciDriver(void *Address)
 {
 	//Debug
-	PrintFormatted("[AHCI] Initialize AHCI Driver Instance\r\n");
+	LogFormatted("[AHCI] Initialize AHCI Driver Instance\r\n");
 
 	//Save Bases + Map
 	PciBaseAddress = (PciHeader0 *) Address;
@@ -279,10 +276,10 @@ AhciDriver::AhciDriver(void *Address)
 	//ABAR = (HbaMemory *) IdentityAddPhysical((UInt64) ABAR, true, false, true);
 
 	//Debug
-	PrintFormatted("[AHCI]   PCI ADD: @%d\r\n", PciBaseAddress);
-	PrintFormatted("[AHCI]   PCI IDs: 0x%x/0x%x (%d/%d/%d) \r\n", PciBaseAddress->Header.VendorId, PciBaseAddress->Header.DeviceId, PciBaseAddress->Header.Class, PciBaseAddress->Header.Subclass, PciBaseAddress->Header.Function);
-	PrintFormatted("[AHCI]   BAR ADD: @%d\r\n", ABAR);
-	PrintFormatted("[AHCI]   BAR VAL: Ven 0x%x Ver 0x%x Imp %d\r\n", ABAR->Vendor, ABAR->Version, ABAR->PortsImplemented);
+	LogFormatted("[AHCI]   PCI ADD: @%d\r\n", PciBaseAddress);
+	LogFormatted("[AHCI]   PCI IDs: 0x%x/0x%x (%d/%d/%d) \r\n", PciBaseAddress->Header.VendorId, PciBaseAddress->Header.DeviceId, PciBaseAddress->Header.Class, PciBaseAddress->Header.Subclass, PciBaseAddress->Header.Function);
+	LogFormatted("[AHCI]   BAR ADD: @%d\r\n", ABAR);
+	LogFormatted("[AHCI]   BAR VAL: Ven 0x%x Ver 0x%x Imp %d\r\n", ABAR->Vendor, ABAR->Version, ABAR->PortsImplemented);
 
 	//Probe Ports
 	ProbePorts();
@@ -301,7 +298,7 @@ AhciDriver::AhciDriver(void *Address)
 		MemorySet(Port->Buffer, 0, 4096);
 
 		//Debug
-		PrintFormatted("[AHCI]   Buffer ADD #%d: @%d\r\n", i, Port->Buffer);
+		LogFormatted("[AHCI]   Buffer ADD #%d: @%d\r\n", i, Port->Buffer);
 
 		//Read
 		//Port->Read(0, 4, Port->Buffer);

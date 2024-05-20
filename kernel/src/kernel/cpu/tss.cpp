@@ -34,6 +34,11 @@ TssEntry TSS[MAX_CORES];
 //-------------------------------------------------------------------------------------------------------------------------//
 //Initialization
 
+UInt64 TssGetKernelIST2(UInt64 Core)
+{
+	return TSS[0].IST2;
+}
+
 void TssSetKernelStack(UInt64 Core, UInt64 Stack)
 {
 	TSS[Core].RSP0 = Stack;
@@ -77,16 +82,16 @@ void InitializeTss()
 		//TSS[i].RSP0 = (UInt64) ReserveMemory(AP_STACK_SIZE ) + AP_STACK_SIZE  - STACK_OFFSET;
 
 		//Page ISTs
-		TSS[i].IST1 = (UInt64) EasyReservePageFramesAddress(IST_STACK_SIZE / PAGEFRAME_SIZE) + IST_STACK_SIZE - STACK_OFFSET;
-		TSS[i].IST2 = (UInt64) EasyReservePageFramesAddress(IST_STACK_SIZE / PAGEFRAME_SIZE) + IST_STACK_SIZE - STACK_OFFSET;
-		TSS[i].IST3 = (UInt64) EasyReservePageFramesAddress(IST_STACK_SIZE / PAGEFRAME_SIZE) + IST_STACK_SIZE - STACK_OFFSET;
-		TSS[i].IST4 = (UInt64) EasyReservePageFramesAddress(IST_STACK_SIZE / PAGEFRAME_SIZE) + IST_STACK_SIZE - STACK_OFFSET;
-		TSS[i].IST5 = (UInt64) EasyReservePageFramesAddress(IST_STACK_SIZE / PAGEFRAME_SIZE) + IST_STACK_SIZE - STACK_OFFSET;
-		TSS[i].IST6 = (UInt64) EasyReservePageFramesAddress(IST_STACK_SIZE / PAGEFRAME_SIZE) + IST_STACK_SIZE - STACK_OFFSET;
-		TSS[i].IST7 = (UInt64) EasyReservePageFramesAddress(IST_STACK_SIZE / PAGEFRAME_SIZE) + IST_STACK_SIZE - STACK_OFFSET;
+		TSS[i].IST1 = (UInt64) PmmReserveAddress(IST_STACK_SIZE / PAGEFRAME_SIZE) + IST_STACK_SIZE - STACK_OFFSET;
+		TSS[i].IST2 = (UInt64) PmmReserveAddress(IST_STACK_SIZE / PAGEFRAME_SIZE) + IST_STACK_SIZE - STACK_OFFSET;
+		TSS[i].IST3 = (UInt64) PmmReserveAddress(IST_STACK_SIZE / PAGEFRAME_SIZE) + IST_STACK_SIZE - STACK_OFFSET;
+		TSS[i].IST4 = (UInt64) PmmReserveAddress(IST_STACK_SIZE / PAGEFRAME_SIZE) + IST_STACK_SIZE - STACK_OFFSET;
+		TSS[i].IST5 = (UInt64) PmmReserveAddress(IST_STACK_SIZE / PAGEFRAME_SIZE) + IST_STACK_SIZE - STACK_OFFSET;
+		TSS[i].IST6 = (UInt64) PmmReserveAddress(IST_STACK_SIZE / PAGEFRAME_SIZE) + IST_STACK_SIZE - STACK_OFFSET;
+		TSS[i].IST7 = (UInt64) PmmReserveAddress(IST_STACK_SIZE / PAGEFRAME_SIZE) + IST_STACK_SIZE - STACK_OFFSET;
 
 		//Page Stack
-		TSS[i].RSP0 = (UInt64) EasyReservePageFramesAddress(AP_STACK_SIZE  / PAGEFRAME_SIZE) + AP_STACK_SIZE  - STACK_OFFSET;
+		TSS[i].RSP0 = (UInt64) PmmReserveAddress(AP_STACK_SIZE  / PAGEFRAME_SIZE) + AP_STACK_SIZE  - STACK_OFFSET;
 	}
 }
 

@@ -28,7 +28,7 @@
 //-------------------------------------------------------------------------------------------------------------------------//
 //Implementation
 
-void LoadProcess(char *Name, char *Path, bool Usermode)
+void LoadProcess(char *Name, char *Path, bool User, bool Usermode, UInt64 Core)
 {
 	//Load File
 	void *Buffer = nullptr;
@@ -39,13 +39,13 @@ void LoadProcess(char *Name, char *Path, bool Usermode)
 	if(Buffer != nullptr)
 	{
 		//Debug
-		PrintFormatted("Load Process %s (Image %s)\r\n", Name, Path);
+		LogFormatted("Load Process %s (Image %s)\r\n", Name, Path);
 
 		//Dump File
 		//DumpFile((UInt8 *) Buffer, Size);
 
 		//Create Task
-		Task *NewTask = CreateTask(Name, (void (*)()) nullptr, Usermode);
+		Task *NewTask = CreateTask(Name, (void (*)()) nullptr, User, Usermode, Core);
 
 		//Save CR3
 		UInt64 TempCR3 = ReadCR3();

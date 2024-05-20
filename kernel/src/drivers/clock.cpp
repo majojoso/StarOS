@@ -47,7 +47,7 @@ void GetDateTime(UInt32 *Year, UInt32 *Month, UInt32 *Day, UInt32 *Hour, UInt32 
 	//Read Year
 	PortWriteU8(RTC_PORT_CMD, RTC_REG_YEA);
 	UInt32 DataYear = PortReadU8(RTC_PORT_DAT);
-	*Year = DataYear - ((UInt32) DataYear / 16) * 6;
+	*Year = 2000 + DataYear - ((UInt32) DataYear / 16) * 6;
 
 	//Read Month
 	PortWriteU8(RTC_PORT_CMD, RTC_REG_MON);
@@ -84,7 +84,7 @@ void PrintClock()
 	GetDateTime(&Year, &Month, &Day, &Hour, &Minute, &Second);
 
 	//Print
-	PrintFormatted("[CLOC] DateTime: %d-%d-%d %d:%d:%d\r\n", Year, Month, Day, Hour, Minute, Second);
+	LogFormatted("[CLOC] DateTime: %04d-%02d-%02d %02d:%02d:%02d UTC\r\n", Year, Month, Day, Hour, Minute, Second);
 }
 
 //-------------------------------------------------------------------------------------------------------------------------//

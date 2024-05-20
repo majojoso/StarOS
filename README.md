@@ -14,7 +14,9 @@ Meta Goals/Values/Focus:
 - Prioritize tasks by usefulness and importance
 - Make good decisions
 
-# Features
+# Release notes
+
+## Milestone 1
 
 Current Features of Milestone 1 Release.
 
@@ -55,6 +57,40 @@ Warnings:
 	* still missing proper memory layout, may interfere with BIOS/UEFI/MMIO/HW, data loss likely
 	* does not even run in vbox
 	* has not been tested ever
+
+## Milestone 1.1
+
+New Features of Milestone 1.1 Release.
+
+-	make: optimized warnings
+-	boot: elf loader clear memory, corrected UEFI GetMemoryMap() + ExitBootServices()
+-	lib: AlignTo, unsigned + float math, power + sqr, split print + format, mux printf sinks, format(width + len + precission, %H fix 0B, %b binary)
+-	split init + launcher, operation loop
+-	base: heap alloc align 16 bytes
+-	pmm: multi level page allocator, memory map locking, split mmutil
+-	smp: spinlocks, sync cores by spinlocks, fixed boot crash by using serial init
+-	ps: create for core, sleep, exit, move between runqueues, static smp scheduling, fx save/restore (buggy disabled), taskmanager per task not threads
+-	po: shutdown, poweroff, restart, halt ipi
+-	drivers: clock
+-	ui: draw circle + ellips basics, scrollable console, tga support
+-	hmi: bootcon, logo, welcome, console, panic
+-	compositor: as task avoiding timers
+-	apps: pong + tetris as tasks avoiding timers and using spinlocks
+
+Limitations:
+- no automatic memory management
+- no proper process exception handling
+- only static SMP scheduling
+- round robin scheduling only
+- no kernel protection from usermode (* bug)
+
+Warnings:
+- run only on virtual hardware, do not run on real hardware yet
+	* still missing proper memory layout, may interfere with BIOS/UEFI/MMIO/HW, data loss likely
+	* does not even run in vbox
+	* has not been tested ever
+
+## Preview
 
 Preview (vague):
 - M2 (userxp): Kernel protection fixed, SMP Scheduling, Priority Scheduling, higher half, memory layout, pmm improved, syscall/sysret, AHCI+, NVMe, ACPI AML, Shutdown/Poweroff/Restart, Splash, Kernel API, Sleep, (spin)lock/mutex/semaphore, shared memory, some rpc ?, usermode process compositor with shared memory, overall improved usermode experience
@@ -157,3 +193,30 @@ Debug Commands
 	ENTER = Last Instruction
 	quit
 	[not yet working in VS Code UI]
+
+# Screnshots
+
+bootcon
+
+![bootcon](/resources/screens/1.png)
+
+progress
+
+![progress](/resources/screens/2.png)
+
+welcome
+
+![welcome](/resources/screens/3.png)
+
+console
+
+![console](/resources/screens/4.png)
+
+gui
+
+![gui](/resources/screens/5.png)
+
+panic
+
+![panic](/resources/screens/6.png)
+

@@ -12,6 +12,9 @@
 
 #include<library/list.h>
 
+#include<kernel/cpu/cpuid.h>
+#include<kernel/smp/smp.h>
+
 #include<kernel/mm/vmm.h>
 
 #include<kernel/ps/threads.h>
@@ -24,6 +27,7 @@
 //Definitions
 
 extern CR3 KernelCr3[MAX_CORES];
+extern UInt8 CoreCount;
 
 //-------------------------------------------------------------------------------------------------------------------------//
 //Declarations
@@ -41,18 +45,21 @@ UInt64 ThreadIdCounter;
 
 UInt64 GetProcessId()
 {
-	//TODO: Remove Hardcode
-	UInt64 Core = 0;
+	//Core
+	UInt8 ApicId = CpuidGetLapicId();
+	UInt64 Core = GetCoreFromApicId(ApicId);
+
+	//Call
 	return SchedulerGetActiveProcessId(Core);
 }
 
-Task *CreateTask(char *Name, void (*Routine)(), bool Usermode)
+Task *CreateTask(char *Name, void (*Routine)(), bool User, bool Usermode, UInt64 Core)
 {
 	//Id
 	UInt64 Id = TaskIdCounter++;
 
 	//Debug
-	PrintFormatted("CreateTask #%d '%s': InitialThread @0x%x\r\n", Id, Name, Routine);
+	LogFormatted("CreateTask #%d '%s': InitialThread @0x%x\r\n", Id, Name, Routine);
 
 	//Create
 	Task *NewTask = new Task();
@@ -67,27 +74,27 @@ Task *CreateTask(char *Name, void (*Routine)(), bool Usermode)
 	NewTask->Statistics.Percentage = 0;
 
 	//Page Mapping
-	if(Id == 0)
-	{
-		NewTask->PagingPointer = KernelCr3[0]; //TODO: Remove Hardcode
-	}
-	else
+	if(User)
 	{
 		NewTask->PagingPointer = InitializeMapping();
-		//MapAddressFromPhysicalHugeRange(NewTask->PagingPointer, GB(0), GB(4), GB(0), true, false, false); //Secure   (Fails, Kernel   protected from Usermode)
-		MapAddressFromPhysicalHugeRange(NewTask->PagingPointer, GB(0), GB(4), GB(0), true, false, true);  //Unsecure (Works, Kernel unprotected from Usermode)
+		//VmmMapAddressFromPhysicalHugeRange(NewTask->PagingPointer, GB(0), GB(4), GB(0), true, false, false); //Secure   (Fails, Kernel   protected from Usermode)
+		VmmMapAddressFromPhysicalHugeRange(NewTask->PagingPointer, GB(0), GB(4), GB(0), true, false, true);  //Unsecure (Works, Kernel unprotected from Usermode)
 		//TODO: Remove Hack
 
 		//Compromize (First GB unsecure)
-		//MapAddressFromPhysicalHugeRange(NewTask->PagingPointer, GB(0), GB(1), GB(0), true, false, true);
-		//MapAddressFromPhysicalHugeRange(NewTask->PagingPointer, GB(1), GB(2), GB(1), true, false, false);
-		//MapAddressFromPhysicalHugeRange(NewTask->PagingPointer, GB(2), GB(3), GB(2), true, false, false);
-		//MapAddressFromPhysicalHugeRange(NewTask->PagingPointer, GB(3), GB(4), GB(3), true, false, false);
+		//VmmMapAddressFromPhysicalHugeRange(NewTask->PagingPointer, GB(0), GB(1), GB(0), true, false, true);
+		//VmmMapAddressFromPhysicalHugeRange(NewTask->PagingPointer, GB(1), GB(2), GB(1), true, false, false);
+		//VmmMapAddressFromPhysicalHugeRange(NewTask->PagingPointer, GB(2), GB(3), GB(2), true, false, false);
+		//VmmMapAddressFromPhysicalHugeRange(NewTask->PagingPointer, GB(3), GB(4), GB(3), true, false, false);
+	}
+	else
+	{
+		NewTask->PagingPointer = KernelCr3[Core];
 	}
 
 	//Thread
-	NewTask->Threads = new List<Thread *>;
-	Thread *NewThread = CreateThread(ThreadIdCounter++, NewTask, Routine, nullptr, 0, Usermode);
+	NewTask->Threads = new List<Thread *>();
+	Thread *NewThread = CreateThread(ThreadIdCounter++, NewTask, Routine, nullptr, 0, User, Usermode, Core);
 	NewTask->Threads->AddTail(NewThread);
 
 	//Add
@@ -110,7 +117,8 @@ void InitializeTasks()
 	ThreadIdCounter = 0;
 
 	//Idle Task
-	CreateTask("Idle0", (void (*)()) IdleThreadRoutine, false);
+	Task *Idle = CreateTask("Idle", (void (*)()) IdleThreadRoutine, false, false, 0);
+	for(int i = 1; i < CoreCount; i++) CreateThread(ThreadIdCounter++, Idle, (void (*)()) IdleThreadRoutine, nullptr, 0, false, false, i);
 }
 
 void DeinitializeTasks()

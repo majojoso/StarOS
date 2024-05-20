@@ -106,6 +106,8 @@ public:
 		//Data
 		RunQueueNode<T> *New = new RunQueueNode<T>();
 		New->Data = Data;
+		New->Previous = nullptr;
+		New->Next = nullptr;
 
 		//Link Forward
 		if(Previous == nullptr) Head = New;
@@ -197,10 +199,10 @@ public:
 			if(Next == nullptr) Tail = Previous;
 			else Next->Previous = Previous;
 
-			if(Active = Current) Active = Next;
+			if(Active == Current) Active = Next;
 
 			T Data = Current->Data;
-			FreeMemory(Current);
+			delete Current;
 
 			return Data;
 		}
@@ -234,7 +236,7 @@ public:
 
 			if(Second == nullptr) Tail = Head;
 
-			FreeMemory(First);
+			delete First;
 
 			return Data;
 		}*/
@@ -256,7 +258,7 @@ public:
 
 			if(Prelast == nullptr) Head = Tail;
 
-			FreeMemory(Last);
+			delete Last;
 
 			return Data;
 		}*/

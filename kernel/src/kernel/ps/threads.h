@@ -22,8 +22,12 @@
 //-------------------------------------------------------------------------------------------------------------------------//
 //Definitions
 
-#define KERNEL_STACK_SIZE (32 * 1024)
-#define THREAD_STACK_SIZE 4096
+#define KERN_STACK_ADDR   GB(7)
+#define USER_STACK_ADDR   GB(6)
+
+#define KERN_STACK_SIZE   KB(4)
+#define USER_STACK_SIZE   KB(4)
+
 #define STACK_OFFSET      16
 
 //-------------------------------------------------------------------------------------------------------------------------//
@@ -43,6 +47,10 @@ public:
 	RunQueue<Thread *> *QueueSuspended;
 	RunQueue<Thread *> *QueueTerminated;
 
+	RegisterSet *RegistersSysApiResult;
+
+	UInt64 Ticks;
+
 	CoreThreadManager()
 	{
 		QueueRunning    = new RunQueue<Thread *>();
@@ -54,6 +62,10 @@ public:
 
 		QueueSuspended  = new RunQueue<Thread *>();
 		QueueTerminated = new RunQueue<Thread *>();
+
+		RegistersSysApiResult = nullptr;
+
+		Ticks = 0;
 	}
 
 //private:
@@ -64,9 +76,9 @@ public:
 //-------------------------------------------------------------------------------------------------------------------------//
 //Prototypes
 
-void IdleThreadRoutine(UInt64 Core);
+void IdleThreadRoutine();
 
-Thread *CreateThread(UInt64 Id, Task *ParentTask, void (*Routine)(), void *Stack, UInt64 StackSize, bool Usermode);
+Thread *CreateThread(UInt64 Id, Task *ParentTask, void (*Routine)(), void *Stack, UInt64 StackSize, bool User, bool Usermode, UInt64 Core);
 
 void InitializeThreads();
 void DeinitializeThreads();

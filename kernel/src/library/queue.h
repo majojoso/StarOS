@@ -111,7 +111,7 @@ public:
 			if(Second == nullptr) Tail = Head;
 
 			//Free
-			FreeMemory(First);
+			delete First;
 
 			//Count
 			Count--;

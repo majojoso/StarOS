@@ -15,8 +15,10 @@
 
 #include<kernel/int/pic/pit.h>
 
+#include<kernel/cpu/cpuid.h>
 #include<kernel/cpu/gdt.h>
 #include<kernel/cpu/tss.h>
+
 #include<kernel/mm/paging.h>
 
 //-------------------------------------------------------------------------------------------------------------------------//
@@ -27,6 +29,8 @@
 
 //Main
 void ApMain(UInt64 Core);
+void Initialize(UInt64 Core);
+void Launch(UInt64 Core);
 
 //SMP Infos
 extern UInt8  CoresLocalApicIds[MAX_CORES];
@@ -74,7 +78,10 @@ extern "C" void SmpApMain()
 	Int64 Id = ApId;
 
 	//Greet
-	PrintFormatted("[SMP ] AP%d (APIC%d): Hello\r\n", Id, CoresLocalApicIds[Id]);
+	LogFormatted("[SMP ] AP%d (APIC%d): Hello\r\n", Id, CoresLocalApicIds[Id]);
+
+	//Initialize
+	Initialize(Id);
 
 	//Signal
 	ApAlive = 1;
@@ -82,8 +89,11 @@ extern "C" void SmpApMain()
 	//Wait
 	do { asm volatile("pause" : : : "memory"); } while(!BspFinsihed);
 
+	//Launch
+	Launch(Id);
+
 	//AP Main
-	ApMain(Id);
+	//ApMain(Id);
 }
 
 //-------------------------------------------------------------------------------------------------------------------------//
@@ -92,8 +102,7 @@ extern "C" void SmpApMain()
 void SmpStartAps()
 {
 	//BSP LAPIC ID
-	UInt8 BspId = 0;
-	asm volatile("mov $1, %%eax; cpuid; shrl $24, %%ebx;" : "=b"(BspId) : : );
+	UInt8 BspId = CpuidGetLapicId();
 
 	//Copy Trampoline (Low Memory)
 	MemoryCopy((void *) &SmpApTrampoline, (void *) TrampolineTarget, 256); //4096
@@ -102,8 +111,8 @@ void SmpStartAps()
 	UInt32 Vector = (TrampolineTarget >> 12) & 0xFF;
 
 	//Debug
-	PrintFormatted("[SMP ] BSP %d\r\n", BspId);
-	PrintFormatted("[SMP ] APs: Trampoline: %d B (0x%x - 0x%x) => 0x%x\r\n", ((UInt64) &SmpApTrampolineEnd - (UInt64) &SmpApTrampoline), &SmpApTrampoline, &SmpApTrampolineEnd, TrampolineTarget);
+	LogFormatted("[SMP ] BSP %d\r\n", BspId);
+	LogFormatted("[SMP ] APs: Trampoline: %d B (0x%x - 0x%x) => 0x%x\r\n", ((UInt64) &SmpApTrampolineEnd - (UInt64) &SmpApTrampoline), &SmpApTrampoline, &SmpApTrampolineEnd, TrampolineTarget);
 
 	//Loop Cores
 	for(int i = 0; i < CoreCount; i++)
@@ -130,14 +139,14 @@ void SmpStartAps()
 		*ApStack = TSS[i].RSP0;
 
 		//Debug
-		PrintFormatted("[SMP ] AP%d\r\n", ApId);
-		PrintFormatted("[SMP ] AP%d (APIC%d): GDTR=0x%x,0x%x GDT-ADD=0x%x CR3 0x%x RSP 0x%x\r\n", ApId, CoresLocalApicIds[ApId], ApGdtPointer->Offset, ApGdtPointer->Size, ApGdtPointer, *ApPaging, *ApStack);
+		LogFormatted("[SMP ] AP%d\r\n", ApId);
+		LogFormatted("[SMP ] AP%d (APIC%d): GDTR=0x%x,0x%x GDT-ADD=0x%x CR3 0x%x RSP 0x%x\r\n", ApId, CoresLocalApicIds[ApId], ApGdtPointer->Offset, ApGdtPointer->Size, ApGdtPointer, *ApPaging, *ApStack);
 
 		//INIT
 		if(true)
 		{
 			//Debug
-			PrintFormatted("[SMP ] AP%d (APIC%d): INIT\r\n", ApId, CoresLocalApicIds[ApId]);
+			LogFormatted("[SMP ] AP%d (APIC%d): INIT\r\n", ApId, CoresLocalApicIds[ApId]);
 
 			//Send INIT
 			LapicSendIpi(CoresLocalApicIds[ApId], ICR_DEL_MOD_INIT | ICR_LEVEL_ASSERT);
@@ -151,7 +160,7 @@ void SmpStartAps()
 		if(true)
 		{
 			//Debug
-			PrintFormatted("[SMP ] AP%d (APIC%d): SIPI #1\r\n", ApId, CoresLocalApicIds[ApId]);
+			LogFormatted("[SMP ] AP%d (APIC%d): SIPI #1\r\n", ApId, CoresLocalApicIds[ApId]);
 
 			//Send SIPI
 			LapicSendIpi(CoresLocalApicIds[ApId], Vector | ICR_DEL_MOD_SIPI | ICR_LEVEL_ASSERT);
@@ -168,7 +177,7 @@ void SmpStartAps()
 		if(!ApAlive)
 		{
 			//Debug
-			PrintFormatted("[SMP ] AP%d (APIC%d): SIPI #2\r\n", ApId, CoresLocalApicIds[ApId]);
+			LogFormatted("[SMP ] AP%d (APIC%d): SIPI #2\r\n", ApId, CoresLocalApicIds[ApId]);
 
 			//Send SIPI
 			LapicSendIpi(CoresLocalApicIds[ApId], Vector | ICR_DEL_MOD_SIPI | ICR_LEVEL_ASSERT);
@@ -190,7 +199,7 @@ void SmpStartAps()
 		do { asm volatile("pause" : : : "memory"); } while(!ApAlive);
 
 		//Debug
-		PrintFormatted("[SMP ] AP%d (APIC%d): Alive\r\n", ApId, CoresLocalApicIds[ApId]);
+		LogFormatted("[SMP ] AP%d (APIC%d): Alive\r\n", ApId, CoresLocalApicIds[ApId]);
 	}
 
 	//Signal
